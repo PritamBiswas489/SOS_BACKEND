@@ -6,7 +6,7 @@
 import { createServer } from 'http';
 import chalk from 'chalk';
 const { PORT } = process.env;
-import app from './src/app';
+import app from './src/app.js';
 /**
  * Normalize a port into a number, string, or false.
  */
