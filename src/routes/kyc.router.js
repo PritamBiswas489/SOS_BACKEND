@@ -1,155 +1,149 @@
 import "../config/environment.js";
 import express from "express";
+
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import KycController from "../controllers/kyc.controller.js";
 
+const kycUploadDir = path.join(process.cwd(), "uploads", "kyc");
+if (!fs.existsSync(kycUploadDir)) {
+  fs.mkdirSync(kycUploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, kycUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB per file
+});
+
 const router = express.Router();
+
 /**
  * @swagger
- * /api/auth/kyc/create-applicant:
+ * /api/auth-web/kyc/submit-documents:
  *   post:
- *     summary: Create a new KYC applicant
- *     description: Creates a new applicant for KYC verification.
+ *     summary: Submit KYC details and documents
  *     tags:
- *       - Auth-KYC
+ *       - KYC routes
  *     security:
- *      - bearerAuth: []
- *      - refreshToken: []
+ *       - bearerAuth: []
+ *       - refreshToken: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
- *               re_apply:
- *                 type: integer
- *                 default: 0
- *                 description: Indicates if the applicant is re-applying (0 = no, 1 = yes)
+ *               fullName:
+ *                 type: string
+ *                 description: Full Name
+ *                 default: "John Michael Doe"
+ *               residentialAddress:
+ *                 type: string
+ *                 description: Residential Address
+ *                 default: "123 Oak Street, New York, NY 10001"
+ *               documentType:
+ *                 type: string
+ *                 description: Selected document type (Utility Bill, National ID, Driver's License, Int'l Passport)
+ *               document:
+ *                 type: string
+ *                 format: binary
+ *                 description: Supporting document file
  *     responses:
  *       200:
- *         description: Applicant created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 applicantId:
- *                   type: string
- *       400:
- *         description: Bad request
- *       500:
- *         description: Internal server error
+ *         description: KYC documents submitted successfully
  */
-router.post("/create-applicant", async (req, res, next) => {
-  const response = await KycController.createApplicant({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
-  res.return(response);
-});
 
-/**
- * @swagger
- * /api/auth/kyc/get-access-token:
- *   get:
- *     summary: Get access token for KYC
- *     description: Retrieves an access token required for KYC operations.
- *     tags:
- *       - Auth-KYC
- *     security:
- *      - bearerAuth: []
- *      - refreshToken: []
- *     responses:
- *       200:
- *         description: Access token retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
- */
-router.get("/get-access-token", async (req, res, next) => {
-  const response = await KycController.getAccessToken({
+router.post(
+  "/submit-documents",
+  (req, res, next) => {
+    upload.single("document")(req, res, function (err) {
+      if (err && err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          status: 400,
+          error: { message: "Document must be less than 2 MB." },
+        });
+      } else if (err) {
+        return res.status(400).json({
+          status: 400,
+          error: { message: err.message },
+        });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    const response = await KycController.submitKycDocuments({
+      file: req.file,
+      payload: { ...req.params, ...req.query, ...req.body },
+      headers: req.headers,
+      user: req.user,
+    });
+    res.return(response);
+  },
+);
+
+router.get("/get-documents", async (req, res) => {
+  /**
+   * @swagger
+   * /api/auth-web/kyc/get-documents:
+   *   get:
+   *     summary: Get all KYC documents
+   *     tags:
+   *       - KYC routes
+   *     security:
+   *       - bearerAuth: []
+   *       - refreshToken: []
+   *     responses:
+   *       200:
+   *         description: List of KYC documents
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   user_id:
+   *                     type: integer
+   *                   name:
+   *                     type: string
+   *                   address:
+   *                     type: string
+   *                   document_type:
+   *                     type: string
+   *                   document_originalname:
+   *                     type: string
+   *                   document_path:
+   *                     type: string
+   *                   status:
+   *                     type: string
+   *                   created_at:
+   *                     type: string
+   *                     format: date-time
+   *                   updated_at:
+   *                     type: string
+   *                     format: date-time
+   */
+  const response = await KycController.getKycDocuments({
+    payload: { ...req.params, ...req.query, ...req.body },
     headers: req.headers,
     user: req.user,
   });
   res.return(response);
 });
 
-/**
- * @swagger
- * /api/auth/kyc/get-user-kyc-data:
- *   get:
- *     summary: Get user KYC data
- *     description: Retrieves the KYC data for the authenticated user.
- *     tags:
- *       - Auth-KYC
- *     security:
- *      - bearerAuth: []
- *      - refreshToken: []
- *     responses:
- *       200:
- *         description: User KYC data retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 kycData:
- *                   type: object
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
- */
-router.get("/get-user-kyc-data", async (req, res, next) => {
-  const response = await KycController.getUserKycData({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
-  res.return(response);
-});
-
-
-// /**
-//  * @swagger
-//  * /api/auth/kyc/get-document-images-by-inspection-id:
-//  *   get:
-//  *     summary: Get document images by inspection ID
-//  *     description: Retrieves document images for a specific inspection ID.
-//  *     tags:
-//  *       - Auth-KYC
-//  *     security:
-//  *      - bearerAuth: []
-//  *      - refreshToken: []
-//  *     parameters:
-//  *       - in: query
-//  *         name: inspectionId
-//  *         required: true
-//  *         schema:
-//  *           type: string
-//  *         description: The inspection ID to retrieve document images for
-//  *     responses:
-//  *       200:
-//  *         description: Document images retrieved successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 images:
-//  *                   type: array
-//  *                   items:
-//  *                     type: object
-//  *       400:
-//  *         description: Bad request
-//  *       401:
-//  *         description: Unauthorized
-//  *       500:
-//  *         description: Internal server error
-//  */
-// router.get("/get-document-images-by-inspection-id", async (req, res, next) => {
-//   const response = await KycController.getDocumentImagesByInspectionId({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
-//   res.return(response);
-// });
 export default router;

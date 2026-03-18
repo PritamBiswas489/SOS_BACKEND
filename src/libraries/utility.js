@@ -286,4 +286,19 @@ export const codeChallenge = async () => {
 };
 
 
+export function generateLicenseCode(userId, timestamp = Date.now()) {
+  const ts = timestamp instanceof Date ? timestamp.getTime() : timestamp;
+ 
+  // Create a deterministic hash from userId + timestamp
+  const raw = `${userId}:${ts}`;
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+ 
+  // Take two 4-character segments from the hash (uppercase alphanumeric)
+  const seg1 = hash.slice(0, 4).toUpperCase();
+  const seg2 = hash.slice(4, 8).toUpperCase();
+ 
+  return `SOS-${seg1}-${seg2}`;
+}
+
+
 

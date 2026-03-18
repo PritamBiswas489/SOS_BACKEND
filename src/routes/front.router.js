@@ -1,7 +1,7 @@
 import '../config/environment.js';
 import express from 'express';
 import { default as loginRouter } from './login.router.js';
-import { default as notificationRouter } from './notification.router.js';
+// import { default as notificationRouter } from './notification.router.js';
 import trackIpAddressDeviceId from '../middlewares/trackIpAddressDeviceId.js';
 const router = express.Router();
 import ContactUsController from '../controllers/contactus.controller.js';
@@ -71,7 +71,7 @@ router.get('/contact-us', async (req, res, next) => {
  
 
 router.use('/login',loginRouter)
-router.use('/notification', notificationRouter);
+// router.use('/notification', notificationRouter);
 
 
 

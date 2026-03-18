@@ -30,7 +30,7 @@ const router = express.Router();
  *                 type: string
  *                 required: true
  *                 enum: ["whatsapp", "sms"]
- *                 default: "whatsapp"
+ *                 default: "sms"
  *               appHash:
  *                 type: string
  *                 required: true
@@ -44,12 +44,46 @@ router.post("/send-otp", otpRateLimiter, async (req, res) => {
    res.return(response);
 });
 
+  /**
+   * @swagger
+   * /api/front/login/verify-otp:
+   *   post:
+   *     summary: Verify OTP for login
+   *     tags:
+   *       - Login routes
+   *     security:
+   *       - bearerAuth: []
+   *       - refreshToken: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               phoneNumber:
+   *                 type: string
+   *                 required: true
+   *                 default: "+919830990065"
+   *               otp:
+   *                 type: string
+   *                 required: true
+   *                 default: "123456"
+   *     responses:
+   *       200:
+   *         description: OTP verified successfully
+   */
+router.post("/verify-otp", async (req, res) => {
+   const response = await LoginController.verifyOtp({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
 /**
  * @swagger
- * /api/front/login/create-verify-pin-by-phone-number:
+ * /api/front/login/create-user-after-otp-verification:
  *   post:
- *     summary: Get user by phone number and pin code
- *     tags: 
+ *     summary: Create user after OTP verification
+ *     tags:
  *       - Login routes
  *     security:
  *       - bearerAuth: []
@@ -65,56 +99,15 @@ router.post("/send-otp", otpRateLimiter, async (req, res) => {
  *                 type: string
  *                 required: true
  *                 default: "+919830990065"
- *               pinCode:
- *                 type: string
- *                 required: true
- *                 default: "1234"
- *               type:
- *                 type: string
- *                 required: true
- *                 enum: ["register", "login"]
- *                 default: "login"
  *     responses:
  *       200:
- *         description: User retrieved successfully
+ *         description: User created successfully after OTP verification
  */
-router.post("/create-verify-pin-by-phone-number", async (req, res) => {
-   const response = await LoginController.createOrVerifyPinByPhoneNumber({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
-   res.return(response)
+router.post("/create-user-after-otp-verification", async (req, res) => {
+   const response = await LoginController.createUserAfterOtpVerification({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
 });
 
+ 
 
-/**
- * @swagger
- * /api/front/login/update-pin-by-phone-number:
- *   post:
- *     summary: Update pin by phone number
- *     tags: 
- *       - Login routes
- *     security:
- *       - bearerAuth: []
- *       - refreshToken: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               phoneNumber:
- *                 type: string
- *                 required: true
- *                 default: "+919830990065"
- *               pinCode:
- *                 type: string
- *                 required: true
- *                 default: "1234"
- *     responses:
- *       200:
- *         description: Pin updated successfully
- */
-router.post("/update-pin-by-phone-number", async (req, res) => {
-  const response = await LoginController.updatePinByPhoneNumber({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
-  res.return(response)
-});
-export default router;
+ export default router;

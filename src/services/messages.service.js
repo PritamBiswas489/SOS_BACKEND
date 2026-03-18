@@ -118,8 +118,9 @@ export const otpSmsService = async (number, otp_code, appHash) => {
 
        const response = await client.messages
         .create({
-            body: `<#> שלום! הקוד שלך לכניסה לאפליקציית TRAVEL MONEY הוא: ${otp_code}. הקוד בתוקף ל-10 דקות. שמרו עליו בסוד 🤫\n${appHash}`,
-            from: 'TravelMoney',
+            body: `<#> Hello! Your code to log in to the TRAVEL MONEY app is: ${otp_code}. The code is valid for 5 minutes. Keep it secret 🤫
+${appHash}`,
+            from: '+18392574917', // Twilio's test number
             to: number
         })
 
