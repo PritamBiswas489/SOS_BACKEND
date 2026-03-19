@@ -1,6 +1,5 @@
 /node_modules
 /uploads
-/src/locales/*.json
 .env
 *.zip
 package-lock.json
