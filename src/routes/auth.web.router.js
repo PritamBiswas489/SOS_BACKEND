@@ -1,13 +1,11 @@
 import '../config/environment.js';
 import express from 'express';
-import { default as jwtVerifyWeb } from '../middlewares/jwtVerifyWeb.js';
-import { default as licenseRouter } from './license.router.js';
-import { default as kycRouter } from './kyc.router.js';
+import { default as UserRouter } from './user.router.js';
+import { default as AdminRouter } from './admin.router.js';
 const router = express.Router();
-
-router.use(jwtVerifyWeb);
-
-router.use("/license", licenseRouter);
-router.use("/kyc", kycRouter);
+ 
+ 
+router.use("/user", UserRouter);
+router.use("/admin", AdminRouter);
  
 export default router;

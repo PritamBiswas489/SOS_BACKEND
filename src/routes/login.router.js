@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/front/login/send-otp:
+ * /api/front-web/login/send-otp:
  *   post:
  *     summary: Send OTP for login
  *     tags: 
@@ -46,7 +46,7 @@ router.post("/send-otp", otpRateLimiter, async (req, res) => {
 
   /**
    * @swagger
-   * /api/front/login/verify-otp:
+   * /api/front-web/login/verify-otp:
    *   post:
    *     summary: Verify OTP for login
    *     tags:
@@ -80,7 +80,7 @@ router.post("/verify-otp", async (req, res) => {
 
 /**
  * @swagger
- * /api/front/login/create-user-after-otp-verification:
+ * /api/front-web/login/create-user-after-otp-verification:
  *   post:
  *     summary: Create user after OTP verification
  *     tags:

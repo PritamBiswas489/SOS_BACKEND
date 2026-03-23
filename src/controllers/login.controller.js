@@ -137,6 +137,7 @@ export default class LoginController {
    * @returns
    */
 
+  //* Create user after OTP verification for website login
   static async createUserAfterOtpVerification(request) {
     const {
       payload,
@@ -144,21 +145,25 @@ export default class LoginController {
     } = request;
     try {
       const phoneNumber = payload?.phoneNumber;
-      const user = await User.findOne({ where: { phone_number: phoneNumber } });
+      const role = "USER";
+      const user = await User.findOne({ where: { phone_number: phoneNumber, role } });
       let jwtPayload;
       if (user) {
          jwtPayload = {
           id: user.id,
           phoneNumber: user.phone_number,
+          email: user.email,
+          role: user.role,
         };
       } else {
-        const newUser = await User.create({ phone_number: phoneNumber });
+        const newUser = await User.create({ phone_number: phoneNumber,  role });
          jwtPayload = {
           id: newUser.id,
           phoneNumber: newUser.phone_number,
+          email: newUser.email,
+          role: newUser.role,
         };
       }
-
       const accessToken = await generateToken(
         jwtPayload,
         process.env.JWT_ALGO,
@@ -175,7 +180,7 @@ export default class LoginController {
 
       return {
         status: 200,
-        data: { accessToken, refreshToken},
+        data: { user: jwtPayload, accessToken, refreshToken },
         message: i18n.__("USER_CREATED_SUCCESSFULLY"),
         error: {},
       };

@@ -30,7 +30,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/auth-web/kyc/submit-documents:
+ * /api/auth-web/user/kyc/submit-documents:
  *   post:
  *     summary: Submit KYC details and documents
  *     tags:
@@ -93,11 +93,9 @@ router.post(
     res.return(response);
   },
 );
-
-router.get("/get-documents", async (req, res) => {
-  /**
+/**
    * @swagger
-   * /api/auth-web/kyc/get-documents:
+   * /api/auth-web/user/kyc/get-documents:
    *   get:
    *     summary: Get all KYC documents
    *     tags:
@@ -138,6 +136,8 @@ router.get("/get-documents", async (req, res) => {
    *                     type: string
    *                     format: date-time
    */
+router.get("/get-documents", async (req, res) => {
+  
   const response = await KycController.getKycDocuments({
     payload: { ...req.params, ...req.query, ...req.body },
     headers: req.headers,

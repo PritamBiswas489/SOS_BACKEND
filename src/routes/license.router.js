@@ -5,7 +5,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/auth-web/license/generate-code:
+ * /api/auth-web/user/license/generate-code:
  *   post:
  *     summary: Generate a license code
  *     tags:
@@ -28,7 +28,7 @@ router.post("/generate-code", async (req, res) => {
 
 /**
  * @swagger
- * /api/auth-web/license/get-code:
+ * /api/auth-web/user/license/get-code:
  *   get:
  *     summary: Retrieve license code
  *     tags:

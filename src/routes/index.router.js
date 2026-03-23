@@ -8,7 +8,7 @@ import { default as redisRouter } from './redis.router.js';
 // import { default as adminRouter } from './admin.router.js';
 
 
-router.use('/front', frontRouter);
+router.use('/front-web', frontRouter);
 router.use('/redis', redisRouter);
 router.use('/auth-web', authWebRouter);
 // router.use('/currency', currencyRouter);

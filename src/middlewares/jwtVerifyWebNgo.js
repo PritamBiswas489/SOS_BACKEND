@@ -2,6 +2,7 @@ import '../config/environment.js';
 import jwt from 'jsonwebtoken';
 import { generateToken } from '../libraries/auth.js';
 import UserService from '../services/user.service.js';
+import { PhoneNumber } from 'libphonenumber-js';
 
 const { ACCESS_TOKEN_SECRET_KEY, REFRESH_TOKEN_SECRET_KEY, JWT_ALGO, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_EXPIRES_IN } = process.env;
 
@@ -16,10 +17,10 @@ export default async (req, res, next) => {
       checkdeviceid = false;
     }
 	console.log("Route Path:", routePath);
-	if(routePath.includes('airwallex-authorize-account') || routePath.includes('airwallex-create-customer-account')){
-		console.log("Skipping JWT verification for this route");
-		return next();
-	}
+	// if(routePath.includes('airwallex-authorize-account') || routePath.includes('airwallex-create-customer-account')){
+	// 	console.log("Skipping JWT verification for this route");
+	// 	return next();
+	// }
 	try {
 		const { authorization, refreshtoken } = req.headers;
 		// console.log({ authorization, refreshtoken });
@@ -39,6 +40,9 @@ export default async (req, res, next) => {
 			if(!getUserById.is_active){
 				return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 			}
+			if(getUserById.role !== "NGO"){
+				return res.send({ status: 403, data: [], error: { message: i18n.__("UNAUTHORIZED_ACTION") } });
+			}
 			 
 			req.user = verifiedData;
 			return next();
@@ -57,6 +61,10 @@ export default async (req, res, next) => {
 
 				const payload = {
 					id: data.id,
+					phoneNumber: data.phoneNumber,
+					email: data.email,
+					role: data.role,
+
 				};
 
 				const getUserById = await UserService.getUserById(data.id);
@@ -64,7 +72,9 @@ export default async (req, res, next) => {
 				if(!getUserById.is_active){
 					return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 				}
-				 
+				if(getUserById.role !== "NGO"){
+					return res.send({ status: 403, data: [], error: { message: i18n.__("UNAUTHORIZED_ACTION") } });
+				}
 				
 				req.user = payload;
 				const accessToken = await generateToken(payload, JWT_ALGO, ACCESS_TOKEN_SECRET_KEY, Number(ACCESS_TOKEN_EXPIRES_IN));

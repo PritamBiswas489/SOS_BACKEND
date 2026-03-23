@@ -1,17 +1,19 @@
 import '../config/environment.js';
 import express from 'express';
 import { default as loginRouter } from './login.router.js';
+import {default as NgoTouter} from './ngo.router.js';
+import {default as AdminRouter} from './admin.router.js';
 // import { default as notificationRouter } from './notification.router.js';
 import trackIpAddressDeviceId from '../middlewares/trackIpAddressDeviceId.js';
 const router = express.Router();
 import ContactUsController from '../controllers/contactus.controller.js';
  
 
-router.use(trackIpAddressDeviceId);
+// router.use(trackIpAddressDeviceId);
 
 /**
  * @swagger
- * /api/front/contact-us:
+ * /api/front-web/contact-us:
  *   post:
  *     summary: Save contact us content
  *     tags: [Non authenticated routes]
@@ -51,7 +53,7 @@ router.post('/contact-us', async (req, res, next) => {
 //create swagger  for below router
  /**
     * @swagger
-    * /api/front/contact-us:
+    * /api/front-web/contact-us:
     *   get:
     *     summary: Get contact us content
     *     tags: [Non authenticated routes]
@@ -71,6 +73,8 @@ router.get('/contact-us', async (req, res, next) => {
  
 
 router.use('/login',loginRouter)
+router.use('/ngo',NgoTouter)
+router.use('/admin',AdminRouter);
 // router.use('/notification', notificationRouter);
 
 

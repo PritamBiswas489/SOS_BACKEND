@@ -53,6 +53,40 @@ export default function User(sequelize, DataTypes) {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      ngo_id: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+        defaultValue: null,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
+      },
+      hex_salt: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
+      role: {
+        type: DataTypes.ENUM,
+        values: ["ADMIN", "USER", "NGO"],
+        allowNull: true,
+        defaultValue: "USER",
+      },
+      ngo_certificate: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+      },
+      ngo_number_of_user_assigned: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      ngo_number_of_user_registered: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
       }
     },
     {

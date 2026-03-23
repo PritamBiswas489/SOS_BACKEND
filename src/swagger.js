@@ -11,9 +11,11 @@ const options = {
     },
     tags: [
       { name: "Login routes", description: "User login endpoints" },
-       { name: "KYC routes", description: "KYC management endpoints" },
+      { name : "NGO Non authenticated routes", description: "NGO management endpoints" },
+      { name: "KYC routes", description: "KYC management endpoints" },
       { name: "License routes", description: "License management endpoints" },
-     
+      { name: "Admin Non authenticated routes", description: "Admin management endpoints" },
+      {name:"Admin authenticated routes", description: "Admin management endpoints"},
       {
         name: "Redis testing routes",
         description: "Endpoints for Redis cache management",
