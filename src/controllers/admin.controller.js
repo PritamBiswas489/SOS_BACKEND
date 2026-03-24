@@ -309,4 +309,27 @@ export default class AdminController {
       });
     });
   }
+  static async upgradeNgoUserLimit(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.upgradeNgoUserLimit({ payload, headers }, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(err.message || "UPGRADE_NGO_USER_LIMIT_FAILED"),
+              reason: err.message,
+            },
+          });
+        }
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("UPGRADE_NGO_USER_LIMIT_SUCCESSFUL"),
+          error: null,
+        });
+      });
+    });
+  }
 }

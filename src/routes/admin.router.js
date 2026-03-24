@@ -245,6 +245,42 @@ router.post("/change-status", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.changeNgoStatus({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
+
+/**
+ * @swagger
+ * /api/auth-web/admin/ngo-upgrade-user-limit:
+ *   post:
+ *     summary: Upgrade the user limit for an NGO
+ *     tags:
+ *       - Admin authenticated routes
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 description: NGO ID to upgrade
+ *               additional_limit:
+ *                 type: integer
+ *                 description: Additional user limit for the NGO
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: NGO user limit upgraded successfully
+ *       400:
+ *         description: Invalid input or upgrade failed
+ */
+router.post("/ngo-upgrade-user-limit", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.upgradeNgoUserLimit({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
 // Multer storage configuration
 const storage = multer.diskStorage({
    destination: function (req, file, cb) {

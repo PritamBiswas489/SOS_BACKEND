@@ -121,7 +121,14 @@ export default class AdminService {
         }
         return ngoData;
       });
-      return callback(null, { data:  {rows: data,total: ngos.count, currentPage: Number(page), totalPages: Math.ceil(ngos.count / limit)}  });
+      return callback(null, {
+        data: {
+          rows: data,
+          total: ngos.count,
+          currentPage: Number(page),
+          totalPages: Math.ceil(ngos.count / limit),
+        },
+      });
     } catch (error) {
       console.error("Error in listNgos:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
@@ -222,6 +229,31 @@ export default class AdminService {
       console.error("Error in changeNgoStatus:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_NGO_STATUS_FAILED"));
+    }
+  }
+  static async upgradeNgoUserLimit(request, callback) {
+    try {
+      const { id, additional_limit } = request.payload;
+      const ngo = await User.findOne({
+        where: { id, role: "NGO" },
+      });
+      if (!ngo) {
+        return callback(new Error("NGO_NOT_FOUND"));
+      }
+      ngo.ngo_number_of_user_assigned += Number(additional_limit);
+      await ngo.save();
+      return callback(null, {
+        data: {
+          id: ngo.id,
+          name: ngo.name,
+          email: ngo.email,
+          ngo_number_of_user_assigned: ngo.ngo_number_of_user_assigned,
+        },
+      });
+    } catch (error) {
+      console.error("Error in upgradeNgoUserLimit:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("UPGRADE_NGO_USER_LIMIT_FAILED"));
     }
   }
 }

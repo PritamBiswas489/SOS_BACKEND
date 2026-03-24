@@ -445,5 +445,6 @@
 	"ADMIN_INVALID_PASSWORD": "ADMIN_INVALID_PASSWORD",
 	"LIST_USERS_FOR_NGO_SUCCESSFUL": "LIST_USERS_FOR_NGO_SUCCESSFUL",
 	"LIST_USERS_FOR_NGO_FAILED": "LIST_USERS_FOR_NGO_FAILED",
-	"NGO phone number must be valid.": "NGO phone number must be valid."
+	"NGO phone number must be valid.": "NGO phone number must be valid.",
+	"UPGRADE_NGO_USER_LIMIT_SUCCESSFUL": "UPGRADE_NGO_USER_LIMIT_SUCCESSFUL"
 }
