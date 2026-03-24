@@ -7,8 +7,7 @@ import fs from "fs";
 import { default as jwtVerifyWebNgo } from "../middlewares/jwtVerifyWebNgo.js";
 import User from "../databases/models/User.js";
 import AdminController from "../controllers/admin.controller.js";
-import { doubleCsrfProtection } from "../middlewares/csrf.js";
-
+ 
 const router = express.Router();
 
 // Set up multer storage for NGO certificates
@@ -75,7 +74,7 @@ const upload = multer({ storage: storage });
  *       400:
  *         description: Invalid input
  */
-router.post("/register-ngo", upload.single("certificate"), doubleCsrfProtection, async (req, res) => {
+router.post("/register-ngo", upload.single("certificate"), async (req, res) => {
   // Attach file info to payload if file is uploaded
   const payload = { ...req.params, ...req.query, ...req.body };
   if (req.file) {

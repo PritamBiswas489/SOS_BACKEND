@@ -101,32 +101,6 @@ app.use(
 );
 // app.options("*", cors());
 
-import session from "express-session";
-import FileStoreFactory from "session-file-store";
-
-const FileStore = FileStoreFactory(session);
-
-app.set("trust proxy", 1); // 🔥 REQUIRED for proxy (Nginx)
-
-app.use(
-  session({
-    store: new FileStore({
-      path: "./sessions",
-      retries: 0,
-    }),
-    secret: process.env.SESSION_SECRET || "session-secret-32-chars-minimum!!",
-    resave: false,
-    saveUninitialized: false, // 🔥 FIXED (important)
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // true in HTTPS
-      httpOnly: true,
-      sameSite:
-        process.env.NODE_ENV === "production" ? "none" : "lax", // 🔥 FIXED
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    },
-  })
-);
-app.use(cookieParser()); 
 app.use(compression());
 app.use(helmet());
 app.use(locales);
@@ -165,9 +139,17 @@ app.use((err, req, res, next) => {
   }
   next(err);
 });
+ 
 
-
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: {
+      withCredentials: true,
+    },
+  })
+);
 
 const isProduction = process.env.NODE_ENV === "production";
 const sequelize = new Sequelize(DB_DATABASE, DB_USERNAME, DB_PASSWORD, {

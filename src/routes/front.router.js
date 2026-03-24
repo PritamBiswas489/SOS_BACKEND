@@ -98,29 +98,29 @@ router.get("/donwload-latest-apk", async (req, res) => {
    const response = await AndroidApkService.downloadLatestApk({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
-/**
- * @swagger
- * /api/front-web/csrf-token:
- *   get:
- *     summary: Get CSRF token
- *     tags:
- *       - Non authenticated routes
- *     responses:
- *       200:
- *         description: Returns a CSRF token
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 csrfToken:
- *                   type: string
- *                   description: CSRF token value
- */
-router.get("/csrf-token", (req, res) => {
-  const csrfToken = generateCsrfToken(req, res);  // ← updated name
-  res.json({ csrfToken });
-});
+// /**
+//  * @swagger
+//  * /api/front-web/csrf-token:
+//  *   get:
+//  *     summary: Get CSRF token
+//  *     tags:
+//  *       - Non authenticated routes
+//  *     responses:
+//  *       200:
+//  *         description: Returns a CSRF token
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 csrfToken:
+//  *                   type: string
+//  *                   description: CSRF token value
+//  */
+// router.get("/csrf-token", (req, res) => {
+//   const csrfToken = generateCsrfToken(req, res);  // ← updated name
+//   res.json({ csrfToken });
+// });
 router.use('/login',loginRouter)
 router.use('/ngo',NgoTouter)
 router.use('/admin',AdminRouter);
