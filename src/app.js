@@ -113,10 +113,10 @@ app.use(
     resave: false,
     saveUninitialized: false, // 🔥 FIXED (important)
     cookie: {
-      secure: process.env.NODE_ENV === "production", // true in HTTPS
+      secure: true, // true in HTTPS
       httpOnly: true,
       sameSite:
-        process.env.NODE_ENV === "production" ? "none" : "lax", // 🔥 FIXED
+       "none", // 🔥 FIXED
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
