@@ -1,8 +1,8 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments  } = db;
 
-  // Define the one-to-many relationship between User and Licenses
-  User.hasMany(Licenses, {
+  // Define the one-to-one relationship between User and Licenses
+  User.hasOne(Licenses, {
     foreignKey: "user_id",
     as: "licenses",
     onDelete: "CASCADE",
@@ -32,6 +32,17 @@ const relation = (db) => {
     foreignKey: "user_id",
     as: "user",
   });
+  User.hasOne(UserKycDocuments, {
+    foreignKey: "user_id",
+    as: "kyc_documents",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  UserKycDocuments.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
+
 };
 
 export default relation;

@@ -1,11 +1,12 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
-const { User, Licenses } = db;
+const { User, Licenses, UserKycDocuments } = db;
 import { hashStr , compareHashedStr, generateToken} from "../libraries/auth.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
 import KycService from "./kyc.service.js";
 import UserService from "./user.service.js";
+import path from "path";
  
 
 export default class NgoService {
@@ -96,6 +97,7 @@ export default class NgoService {
                 await transaction.rollback();
                 return callback(new Error("NGO_CERTIFICATE_FILE_REQUIRED"));
             }
+            
             const {
               fullName,
               emailAddress,
@@ -109,6 +111,7 @@ export default class NgoService {
             if (checkExistingUser) {
                 return callback(new Error("USER_PHONE_NUMBER_ALREADY_REGISTERED"));
             }
+             
             const createUser = await User.create({
                 name: fullName,
                 email: emailAddress,
@@ -122,6 +125,11 @@ export default class NgoService {
                 await transaction.rollback();
                 return callback(new Error("USER_CREATION_FAILED"));
             }
+            const newRegisteredCount = ngoDetails.ngo_number_of_user_registered + 1;
+            await ngoDetails.update(
+                { ngo_number_of_user_registered: newRegisteredCount },
+                { transaction }
+            );
             //upload document in user table
             let kycError = null;
             let kycResult = {};
@@ -147,7 +155,7 @@ export default class NgoService {
                 return callback(kycError);
             }
             //assign license number for user
-            const licenseNumber = `KBY-${String(ngo_id).padStart(2, '0')}-${String(ngoDetails.ngo_number_of_user_registered + 1).padStart(6, '0')}`;
+            const licenseNumber = `KBY-${String(ngo_id).padStart(2, '0')}-${String(newRegisteredCount).padStart(6, '0')}`;
             const licenseData = {
                     user_id: createUser.id,
                     license_key: licenseNumber,
@@ -172,5 +180,46 @@ export default class NgoService {
             return callback(new Error("REGISTER_USER_FOR_NGO_FAILED"));
         }
     }
-    
+    // Service method for listing users under an NGO
+    static async listUsersForNgo({ payload, headers }, callback) {
+        try{
+            const { ngo_id, limit = 10, page = 1 } = payload;
+            const offset = (page - 1) * limit;
+            const users = await User.findAndCountAll({
+                where: { ngo_id, role: "USER" },
+                limit: Number(limit),
+                offset: Number(offset),
+
+                attributes: { exclude: ["password_hash", "hex_salt","ngo_certificate","ngo_number_of_user_assigned","ngo_number_of_user_registered","deleted_at"] },
+                include: [
+                    {
+                        model: Licenses,
+                        as: "licenses",
+                        attributes: ["license_key", "status"],
+                    },
+                    {
+                        model: UserKycDocuments,
+                        as: "kyc_documents",
+                        attributes: ["address","document_type", "document_path", "status"],
+
+                    }
+                ],
+                order: [["created_at", "DESC"]],
+            });
+            const data = users.rows.map((user) => {
+                const userData = user.toJSON();
+                if (userData.kyc_documents?.document_path) {
+                    console.log("User KYC document path:", userData.kyc_documents.document_path);
+                    userData.kyc_documents.document_path = `${process.env.BASE_URL}/uploads/kyc/${path.basename(userData.kyc_documents.document_path)}`;
+                     
+                }
+                return userData;
+            });
+            return callback(null, { data: { rows: data, total: users.count, currentPage: Number(offset / limit) + 1, totalPages: Math.ceil(users.count / limit) } });
+        }catch(error){
+            console.error("Error in listUsersForNgo:", error);
+            process.env.NODE_ENV === "production" && Sentry.captureException(error);
+            return callback(new Error("LIST_USERS_FOR_NGO_FAILED"));
+        }
+    }
 }

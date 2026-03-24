@@ -7,6 +7,7 @@ import fs from "fs";
 import { default as jwtVerifyWebNgo } from "../middlewares/jwtVerifyWebNgo.js";
 import User from "../databases/models/User.js";
 import AdminController from "../controllers/admin.controller.js";
+import { doubleCsrfProtection } from "../middlewares/csrf.js";
 
 const router = express.Router();
 
@@ -36,6 +37,10 @@ const upload = multer({ storage: storage });
  *     summary: Register a new NGO
  *     tags:
  *       - NGO Non authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *       - csrfToken: []
  *     requestBody:
  *       required: true
  *       content:
@@ -70,7 +75,7 @@ const upload = multer({ storage: storage });
  *       400:
  *         description: Invalid input
  */
-router.post("/register-ngo", upload.single("certificate"), async (req, res) => {
+router.post("/register-ngo", upload.single("certificate"), doubleCsrfProtection, async (req, res) => {
   // Attach file info to payload if file is uploaded
   const payload = { ...req.params, ...req.query, ...req.body };
   if (req.file) {
@@ -90,6 +95,10 @@ router.post("/register-ngo", upload.single("certificate"), async (req, res) => {
  *     summary: NGO login
  *     tags:
  *       - NGO Non authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *       - csrfToken: []
  *     requestBody:
  *       required: true
  *       content:

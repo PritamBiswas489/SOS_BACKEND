@@ -49,11 +49,20 @@ const options = {
           description:
             "Refresh token for renewing access (in `refreshtoken` header)",
         },
+        csrfToken: {
+          type: "apiKey",
+          in: "header",
+          name: "x-csrf-token",
+          description: "CSRF token for protection (in `x-csrf-token` header)",
+        },
       },
     },
     security: [
       {
         bearerAuth: [],
+      },
+      {
+        csrfToken: [],
       },
     ],
   },

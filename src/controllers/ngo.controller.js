@@ -260,4 +260,33 @@ export default class NgoController {
       );
     });
   }
+  static async listUsersForNgo(request) {
+      const { payload, headers, user } = request;
+      const ngo_id = user?.id;
+      return new Promise((resolve) => {
+        NgoService.listUsersForNgo(
+          { payload: { ...payload, ngo_id }, headers },
+          (err, response) => {
+            if (err) {
+              return resolve({
+                status: 400,
+                data: null,
+                error: {
+                  message: headers?.i18n.__(
+                    err.message || "LIST_USERS_FOR_NGO_FAILED",
+                  ),
+                  reason: err.message,
+                },
+              });
+            }
+            return resolve({
+              status: 200,
+              data: response.data,
+              message: headers?.i18n.__("LIST_USERS_FOR_NGO_SUCCESSFUL"),
+              error: null,
+            });
+          },
+        );
+      });
+  }
 }

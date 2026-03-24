@@ -8,6 +8,7 @@ import trackIpAddressDeviceId from '../middlewares/trackIpAddressDeviceId.js';
 const router = express.Router();
 import ContactUsController from '../controllers/contactus.controller.js';
 import AndroidApkService from '../services/androidApk.service.js';
+import { generateCsrfToken } from '../middlewares/csrf.js';
 
 // router.use(trackIpAddressDeviceId);
 
@@ -20,6 +21,7 @@ import AndroidApkService from '../services/androidApk.service.js';
  *     security:
  *       - bearerAuth: []
  *       - refreshToken: []
+ *       - csrfToken: []
  *     requestBody:
  *       required: true
  *       content:
@@ -96,7 +98,29 @@ router.get("/donwload-latest-apk", async (req, res) => {
    const response = await AndroidApkService.downloadLatestApk({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
-
+/**
+ * @swagger
+ * /api/front-web/csrf-token:
+ *   get:
+ *     summary: Get CSRF token
+ *     tags:
+ *       - Non authenticated routes
+ *     responses:
+ *       200:
+ *         description: Returns a CSRF token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 csrfToken:
+ *                   type: string
+ *                   description: CSRF token value
+ */
+router.get("/csrf-token", (req, res) => {
+  const csrfToken = generateCsrfToken(req, res);  // ← updated name
+  res.json({ csrfToken });
+});
 router.use('/login',loginRouter)
 router.use('/ngo',NgoTouter)
 router.use('/admin',AdminRouter);

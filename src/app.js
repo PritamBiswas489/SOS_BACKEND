@@ -17,7 +17,8 @@ import customReturn from "./middlewares/responseBuilder.js";
 import locales from "./middlewares/locales.js";
 import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
-
+import cookieParser from "cookie-parser";
+import session from "express-session";
 import {
   otpWhatsappService,
   otpSmsService,
@@ -93,6 +94,19 @@ app.use(
   })
 );
 // app.options("*", cors());
+app.use(cookieParser()); 
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "session-secret-32-chars-minimum!!",
+    resave: false,
+    saveUninitialized: true,             // ← must be true so session.id exists
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  })
+);
 app.use(compression());
 app.use(helmet());
 app.use(locales);
@@ -124,6 +138,14 @@ app.use(
     unauthorizedResponse: (req) => "Unauthorized",
   })
 );
+
+app.use((err, req, res, next) => {
+  if (err.status === 403) {
+    return res.status(403).json({ message: "Invalid CSRF token" });
+  }
+  next(err);
+});
+
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
