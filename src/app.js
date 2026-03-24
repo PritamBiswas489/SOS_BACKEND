@@ -139,13 +139,7 @@ app.use(
   })
 );
 
-app.use((err, req, res, next) => {
-  if (err.status === 403) {
-    return res.status(403).json({ message: "Invalid CSRF token" });
-  }
-  next(err);
-});
-
+ 
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
