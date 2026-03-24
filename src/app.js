@@ -81,7 +81,12 @@ if (SENTRY_ENABLED === "true") {
 }
 app.use(
   cors({
-    origin: true,
+     origin: [
+      "http://localhost:4000",   
+      "http://localhost:3000",               // local
+      "https://back-sos.pritamaqua.aqualeafitsol.com",      // production
+      "https://web-sos.pritamaqua.aqualeafitsol.com"
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -113,10 +118,10 @@ app.use(
     resave: false,
     saveUninitialized: false, // 🔥 FIXED (important)
     cookie: {
-      secure: true, // true in HTTPS
+      secure: process.env.NODE_ENV === "production", // true in HTTPS
       httpOnly: true,
       sameSite:
-       "none", // 🔥 FIXED
+        process.env.NODE_ENV === "production" ? "none" : "lax", // 🔥 FIXED
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
