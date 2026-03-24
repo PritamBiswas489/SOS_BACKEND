@@ -7,7 +7,7 @@ import {default as AdminRouter} from './admin.router.js';
 import trackIpAddressDeviceId from '../middlewares/trackIpAddressDeviceId.js';
 const router = express.Router();
 import ContactUsController from '../controllers/contactus.controller.js';
- 
+import AndroidApkService from '../services/androidApk.service.js';
 
 // router.use(trackIpAddressDeviceId);
 
@@ -70,7 +70,32 @@ router.get('/contact-us', async (req, res, next) => {
 });
 
  
- 
+ /**
+ * @swagger
+ * /api/front-web/donwload-latest-apk:
+ *   get:
+ *     summary: Download the latest Android APK file
+ *     tags:
+ *       - Non authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Latest APK file download
+ *         content:
+ *           application/vnd.android.package-archive:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Failed to download APK
+ */
+
+router.get("/donwload-latest-apk", async (req, res) => {
+   const response = await AndroidApkService.downloadLatestApk({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
 
 router.use('/login',loginRouter)
 router.use('/ngo',NgoTouter)

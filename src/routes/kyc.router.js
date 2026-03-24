@@ -6,6 +6,9 @@ import path from "path";
 import fs from "fs";
 import KycController from "../controllers/kyc.controller.js";
 
+const router = express.Router();
+
+
 const kycUploadDir = path.join(process.cwd(), "uploads", "kyc");
 if (!fs.existsSync(kycUploadDir)) {
   fs.mkdirSync(kycUploadDir, { recursive: true });
@@ -26,7 +29,6 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB per file
 });
 
-const router = express.Router();
 
 /**
  * @swagger

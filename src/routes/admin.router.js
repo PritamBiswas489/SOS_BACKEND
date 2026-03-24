@@ -1,8 +1,10 @@
-
 import "../config/environment.js";
 import express from "express";
 import AdminController from "../controllers/admin.controller.js";
 import { default as jwtVerifyWebAdmin } from "../middlewares/jwtVerifyWebAdmin.js";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 const router = express.Router();
 
 /**
@@ -241,6 +243,112 @@ router.post("/reject-ngo", jwtVerifyWebAdmin, async (req, res) => {
  */
 router.post("/change-status", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.changeNgoStatus({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+// Multer storage configuration
+const storage = multer.diskStorage({
+   destination: function (req, file, cb) {
+      cb(null, "uploads/apks/");
+   // Ensure the uploads/apks directory exists
+   const uploadDir = "uploads/apks";
+   if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+   }
+   cb(null, uploadDir);
+   },
+   filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+   }
+});
+
+// Multer file filter for APK files
+const fileFilter = (req, file, cb) => {
+   console.log("File MIME type:", file.mimetype);
+   if (file.mimetype === "application/vnd.android.package-archive" || file.mimetype === "application/octet-stream") {
+      cb(null, true);
+   } else {
+      cb(new Error("Only APK files are allowed!"), false);
+   }
+};
+
+
+const upload = multer({ storage, fileFilter });
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/upload-apk:
+ *   post:
+ *     summary: Upload an Android APK file
+ *     tags:
+ *       - Admin authenticated routes
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               apkFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: The APK file to upload
+ *               version:
+ *                 type: string
+ *                 description: Version of the APK being uploaded
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: APK uploaded successfully
+ *       400:
+ *         description: No APK file uploaded or invalid file type
+ */
+router.post("/upload-apk", jwtVerifyWebAdmin, upload.single("apkFile"), async (req, res) => {
+   if (!req.file) {
+      return res.status(400).json({ message: "No APK file uploaded." });
+   }
+   const response = await AdminController.uploadAndroidApp({
+      payload: { ...req.params, ...req.query, ...req.body, apkFile: req.file },
+      headers: req.headers
+   });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/apk-releases:
+ *   get:
+ *     summary: Get list of Android APK releases
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page (default 10)
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: List of APK releases
+ *       400:
+ *         description: Invalid query parameters
+ */
+router.get("/apk-releases", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.getApkReleases({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
 

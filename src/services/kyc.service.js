@@ -40,7 +40,7 @@ const kycDocumentSchema = Joi.object({
 
 export default class KycService {
     // This method is responsible for handling the submission of KYC documents by users. It takes in the user ID, payload containing user details, uploaded files, and headers for localization. The method processes the input data, prepares it for database insertion, and currently logs the data to the console for verification. The actual database insertion logic is yet to be implemented.
-    static async submitKycDocuments({ userId, payload, file, headers }, callback) {
+    static async submitKycDocuments({ userId, payload, file, headers, transaction = null }, callback) {
         console.log("Submitting KYC documents for user:", userId);
         console.log("Payload:", payload);
         console.log("File:", file);
@@ -70,9 +70,9 @@ export default class KycService {
                 status: "pending",
             };
             try {
-                await UserKycDocuments.update(updateData, { where: { user_id: userId } });
-                const updatedKycDocument = await UserKycDocuments.findOne({ where: { user_id: userId } });
-                await this.changeStatus({ userId, payload: { status: "approved" }, headers }, () => {});
+                await UserKycDocuments.update(updateData, { where: { user_id: userId }, transaction });
+                const updatedKycDocument = await UserKycDocuments.findOne({ where: { user_id: userId }, transaction });
+                //await this.changeStatus({ userId, payload: { status: "approved" }, headers }, () => {});
                 return callback(null, { data: updatedKycDocument });
             } catch (error) {
                 console.error("Error updating KYC document:", error);
@@ -91,8 +91,8 @@ export default class KycService {
         };
         console.log("Data to be inserted into UserKyc:", insertData);
         try {
-            const newKycDocument = await UserKycDocuments.create(insertData);
-            await this.changeStatus({ userId, payload: { status: "approved" }, headers }, () => {});
+            const newKycDocument = await UserKycDocuments.create(insertData, { transaction });
+            //await this.changeStatus({ userId, payload: { status: "approved" }, headers }, () => {});
             return callback(null, { data: newKycDocument });
         } catch (error) {
             console.error("Error inserting KYC document:", error);

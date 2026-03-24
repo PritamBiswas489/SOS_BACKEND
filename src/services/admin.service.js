@@ -109,6 +109,7 @@ export default class AdminService {
         offset: Number(offset),
         order: [["created_at", "DESC"]],
         attributes: { exclude: ["password_hash", "hex_salt"] },
+        order: [["created_at", "DESC"]],
       });
 
       const data = ngos.rows.map((ngo) => {

@@ -44,38 +44,38 @@ export default class LoginController {
 
      
 
-      const [whatsappResult, smsResult] = await Promise.all([
-        messageType === "whatsapp"
-          ? otpWhatsappService(phoneNumber, otpVerification.otp_code)
-          : null,
-        messageType === "sms" ? otpSmsService(phoneNumber, otpVerification.otp_code, appHash) : null,
-      ]);
+      // const [whatsappResult, smsResult] = await Promise.all([
+      //   messageType === "whatsapp"
+      //     ? otpWhatsappService(phoneNumber, otpVerification.otp_code)
+      //     : null,
+      //   messageType === "sms" ? otpSmsService(phoneNumber, otpVerification.otp_code, appHash) : null,
+      // ]);
 
-      if (messageType === "sms" && smsResult?.error) {
-        return {
-          status: 500,
-          data: [],
-          error: {
-            message: i18n.__("SMS_SEND_FAILED"),
-            reason: smsResult.error,
-          },
-        };
-      }
+      // if (messageType === "sms" && smsResult?.error) {
+      //   return {
+      //     status: 500,
+      //     data: [],
+      //     error: {
+      //       message: i18n.__("SMS_SEND_FAILED"),
+      //       reason: smsResult.error,
+      //     },
+      //   };
+      // }
 
-      if (messageType === "whatsapp" && whatsappResult?.error) {
-        return {
-          status: 500,
-          data: [],
-          error: {
-            message: i18n.__("WHATSAPP_SEND_FAILED"),
-            reason: whatsappResult.error,
-          },
-        };
-      }
+      // if (messageType === "whatsapp" && whatsappResult?.error) {
+      //   return {
+      //     status: 500,
+      //     data: [],
+      //     error: {
+      //       message: i18n.__("WHATSAPP_SEND_FAILED"),
+      //       reason: whatsappResult.error,
+      //     },
+      //   };
+      // }
 
       return {
         status: 200,
-        data: { whatsapp: whatsappResult, sms: smsResult },
+        data: { whatsapp: null, sms: null, otpCode: otpVerification.otp_code },
         message: i18n.__("OTP_SENT_SUCCESSFULLY"),
         error: {},
       };

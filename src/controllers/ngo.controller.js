@@ -157,5 +157,107 @@ export default class NgoController {
 
   static async getNgoDetails(request) {}
   static async approvalOfNgo(request) {}
-  static async registerUserForNgo(request) {}
+  static async registerUserForNgo(request) {
+    const { file, payload, headers, user } = request;
+    const ngo_id = user?.id;
+
+    const schema = Joi.object({
+      fullName: Joi.string()
+        .min(3)
+        .max(100)
+        .required()
+        .messages({
+          "string.base": headers.i18n.__("FULL_NAME_MUST_BE_A_STRING"),
+          "string.empty": headers.i18n.__("FULL_NAME_IS_REQUIRED"),
+          "string.min": headers.i18n.__("FULL_NAME_MIN_LENGTH", { min: 3 }),
+          "string.max": headers.i18n.__("FULL_NAME_MAX_LENGTH", { max: 100 }),
+          "any.required": headers.i18n.__("FULL_NAME_IS_REQUIRED"),
+        }),
+      phoneNumber: Joi.string()
+        .pattern(/^\+\d{10,15}$/)
+        .required()
+        .messages({
+          "string.pattern.base": headers.i18n.__("PHONE_NUMBER_INVALID_FORMAT"),
+          "string.empty": headers.i18n.__("PHONE_NUMBER_IS_REQUIRED"),
+          "any.required": headers.i18n.__("PHONE_NUMBER_IS_REQUIRED"),
+        }),
+      emailAddress: Joi.string()
+        .email()
+        .optional()
+        .allow("", null)
+        .messages({
+          "string.email": headers.i18n.__("EMAIL_ADDRESS_INVALID"),
+        }),
+      residentialAddress: Joi.string()
+        .min(5)
+        .max(255)
+        .required()
+        .messages({
+          "string.base": headers.i18n.__(
+            "RESIDENTIAL_ADDRESS_MUST_BE_A_STRING",
+          ),
+          "string.empty": headers.i18n.__("RESIDENTIAL_ADDRESS_IS_REQUIRED"),
+          "string.min": headers.i18n.__("RESIDENTIAL_ADDRESS_MIN_LENGTH", {
+            min: 5,
+          }),
+          "string.max": headers.i18n.__("RESIDENTIAL_ADDRESS_MAX_LENGTH", {
+            max: 255,
+          }),
+          "any.required": headers.i18n.__("RESIDENTIAL_ADDRESS_IS_REQUIRED"),
+        }),
+      documentType: Joi.string()
+        .min(3)
+        .max(50)
+        .required()
+        .messages({
+          "string.base": headers.i18n.__("DOCUMENT_TYPE_MUST_BE_A_STRING"),
+          "string.empty": headers.i18n.__("DOCUMENT_TYPE_IS_REQUIRED"),
+          "string.min": headers.i18n.__("DOCUMENT_TYPE_MIN_LENGTH", { min: 3 }),
+          "string.max": headers.i18n.__("DOCUMENT_TYPE_MAX_LENGTH", {
+            max: 50,
+          }),
+          "any.required": headers.i18n.__("DOCUMENT_TYPE_IS_REQUIRED"),
+        }),
+    });
+
+    // Validate payload
+    const { error, value } = schema.validate(payload);
+    if (error) {
+      return {
+        status: 400,
+        data: null,
+        error: {
+          message:
+            error.details[0].message || headers.i18n.__("VALIDATION_ERROR"),
+          reason: error.details[0].message,
+        },
+      };
+    }
+
+    return new Promise((resolve) => {
+      NgoService.registerUserForNgo(
+        { file, payload: { ...value, ngo_id }, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "REGISTER_USER_FOR_NGO_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("REGISTER_USER_FOR_NGO_SUCCESSFUL"),
+            error: null,
+          });
+        },
+      );
+    });
+  }
 }

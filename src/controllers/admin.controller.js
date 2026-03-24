@@ -2,6 +2,7 @@ import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import Joi from "joi";
 import AdminService from "../services/admin.service.js";
+import AndroidApkService from "../services/androidApk.service.js";
 export default class AdminController {
   static async registerAdminUser(request) {
     const { payload, headers } = request;
@@ -230,7 +231,6 @@ export default class AdminController {
         });
       });
     });
-
   }
   static async changeNgoStatus(request) {
     const { payload, headers } = request;
@@ -241,7 +241,9 @@ export default class AdminController {
             status: 400,
             data: null,
             error: {
-              message: headers?.i18n.__(err.message || "CHANGE_NGO_STATUS_FAILED"),
+              message: headers?.i18n.__(
+                err.message || "CHANGE_NGO_STATUS_FAILED",
+              ),
               reason: err.message,
             },
           });
@@ -254,6 +256,57 @@ export default class AdminController {
         });
       });
     });
-
+  }
+  // AdminController method for uploading Android APK
+  static async uploadAndroidApp(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AndroidApkService.uploadAndroidApp(
+        { payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(err.message || "UPLOAD_APK_FAILED"),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("UPLOAD_APK_SUCCESSFUL"),
+            error: null,
+          });
+        },
+      );
+    });
+  }
+  static async getApkReleases(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AndroidApkService.getApkReleases({ payload, headers }, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(
+                err.message || "GET_APK_RELEASES_FAILED",
+              ),
+              reason: err.message,
+            },
+          });
+        }
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("GET_APK_RELEASES_SUCCESSFUL"),
+          error: null,
+        });
+      });
+    });
   }
 }

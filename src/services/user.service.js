@@ -11,7 +11,7 @@ export default class UserService {
     try {
       const user = await User.findOne({
         where: { id: userId },
-        attributes: { exclude: ["password_hash", "createdAt", "updatedAt"] },
+        attributes: { exclude: ["password_hash", "created_at", "updated_at"] },
       });
       return user;
     } catch (error) {
