@@ -100,7 +100,7 @@ app.use(
   })
 );
 // app.options("*", cors());
-app.use(cookieParser()); 
+
 import session from "express-session";
 import FileStoreFactory from "session-file-store";
 
@@ -126,6 +126,7 @@ app.use(
     },
   })
 );
+app.use(cookieParser()); 
 app.use(compression());
 app.use(helmet());
 app.use(locales);
