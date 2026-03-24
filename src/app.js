@@ -18,7 +18,7 @@ import locales from "./middlewares/locales.js";
 import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
 import cookieParser from "cookie-parser";
-import session from "express-session";
+ 
 import {
   otpWhatsappService,
   otpSmsService,
@@ -89,28 +89,35 @@ app.use(
       "Authorization",
       "accesstoken",
       "refreshtoken",
+       "x-csrf-token"
     ],
     exposedHeaders: ["accesstoken", "refreshtoken"],
   })
 );
 // app.options("*", cors());
 app.use(cookieParser()); 
+import session from "express-session";
 import FileStoreFactory from "session-file-store";
 
 const FileStore = FileStoreFactory(session);
+
+app.set("trust proxy", 1); // 🔥 REQUIRED for proxy (Nginx)
+
 app.use(
   session({
     store: new FileStore({
-    path: "./sessions",   // 📁 folder where sessions stored
-    retries: 0            // avoid retry spam
+      path: "./sessions",
+      retries: 0,
     }),
     secret: process.env.SESSION_SECRET || "session-secret-32-chars-minimum!!",
     resave: false,
-    saveUninitialized: true,             // ← must be true so session.id exists
+    saveUninitialized: false, // 🔥 FIXED (important)
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", // true in HTTPS
       httpOnly: true,
-      sameSite: "lax",
+      sameSite:
+        process.env.NODE_ENV === "production" ? "none" : "lax", // 🔥 FIXED
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );
