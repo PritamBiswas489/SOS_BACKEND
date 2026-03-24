@@ -79,13 +79,21 @@ export default class NgoService {
     }
     // Service method for registering a user under an NGO
     static async registerUserForNgo({ file, payload, headers }, callback) {
-        const ngoDetails = await User.findOne({ where: { id: payload.ngo_id, role: "NGO" } });
-        if(ngoDetails.ngo_number_of_user_assigned === ngoDetails.ngo_number_of_user_registered){
-            return callback(new Error("NGO_USER_LIMIT_REACHED"));
-        }
+        
         const transaction = await db.sequelize.transaction();
         try{
+           const ngoDetails = await User.findOne({
+                where: { id: payload.ngo_id, role: "NGO" },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (ngoDetails.ngo_number_of_user_assigned === ngoDetails.ngo_number_of_user_registered) {
+                await transaction.rollback();
+                return callback(new Error("NGO_USER_LIMIT_REACHED"));
+            }
             if(!file?.path){
+                await transaction.rollback();
                 return callback(new Error("NGO_CERTIFICATE_FILE_REQUIRED"));
             }
             const {
@@ -139,7 +147,7 @@ export default class NgoService {
                 return callback(kycError);
             }
             //assign license number for user
-            const licenseNumber = `KBY-${String(ngo_id).padStart(2, '0')}-${String(createUser.id).padStart(6, '0')}`;
+            const licenseNumber = `KBY-${String(ngo_id).padStart(2, '0')}-${String(ngoDetails.ngo_number_of_user_registered + 1).padStart(6, '0')}`;
             const licenseData = {
                     user_id: createUser.id,
                     license_key: licenseNumber,

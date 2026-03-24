@@ -121,7 +121,7 @@ export default class AdminService {
         }
         return ngoData;
       });
-      return callback(null, { data: data });
+      return callback(null, { data:  {rows: data,total: ngos.count, currentPage: Number(page), totalPages: Math.ceil(ngos.count / limit)}  });
     } catch (error) {
       console.error("Error in listNgos:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
