@@ -95,8 +95,15 @@ app.use(
 );
 // app.options("*", cors());
 app.use(cookieParser()); 
+import FileStoreFactory from "session-file-store";
+
+const FileStore = FileStoreFactory(session);
 app.use(
   session({
+    store: new FileStore({
+    path: "./sessions",   // 📁 folder where sessions stored
+    retries: 0            // avoid retry spam
+    }),
     secret: process.env.SESSION_SECRET || "session-secret-32-chars-minimum!!",
     resave: false,
     saveUninitialized: true,             // ← must be true so session.id exists
