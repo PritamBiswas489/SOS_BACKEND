@@ -1,6 +1,6 @@
-import "../config/environment.js";
+import "../../config/environment.js";
 import express from "express";
-import LicenseController from "../controllers/license.controller.js";
+import LicenseController from "../../controllers/license.controller.js";
 const router = express.Router();
 
 /**

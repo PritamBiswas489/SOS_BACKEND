@@ -1,7 +1,7 @@
-import "../config/environment.js";
+import "../../config/environment.js";
 import express from "express";
-import AdminController from "../controllers/admin.controller.js";
-import { default as jwtVerifyWebAdmin } from "../middlewares/jwtVerifyWebAdmin.js";
+import AdminController from "../../controllers/admin.controller.js";
+import { default as jwtVerifyWebAdmin } from "../../middlewares/jwtVerifyWebAdmin.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -501,6 +501,80 @@ router.get("/user-list", jwtVerifyWebAdmin, async (req, res) => {
  */
 router.post("/change-user-status", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.changeUserStatus({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/pending-kyc-documents:
+ *   get:
+ *     summary: Get list of pending KYC documents
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page (default 10)
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: List of  pending KYC documents
+ *       400:
+ *         description: Invalid query parameters
+ */
+router.get("/pending-kyc-documents", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.getPendingKycDocuments({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/change-kyc-document-status:
+ *   post:
+ *     summary: Change KYC document status
+ *     tags:
+ *       - Admin authenticated routes
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 description: KYC document ID to change status
+ *               status:
+ *                 type: string
+ *                 enum: [approved, cancelled]
+ *                 description: New status for the KYC document
+ *             required:
+ *               - id
+ *               - status
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: KYC document status changed successfully
+ *       400:
+ *         description: Invalid input or status change failed
+ */
+router.post("/change-kyc-document-status", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.changeKycDocumentStatus({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
 

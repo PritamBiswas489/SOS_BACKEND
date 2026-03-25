@@ -452,5 +452,13 @@
 	"LIST_USERS_SUCCESSFUL": "Users listed successfully.",
 	"CHANGE_USER_STATUS_SUCCESSFUL": "User status changed successfully.",
 	"GET_NGO_AUTOCOMPLETE_FAILED": "Failed to get NGO autocomplete.",
-	"CHANGE_USER_STATUS_FAILED": "Failed to change user status."
+	"CHANGE_USER_STATUS_FAILED": "Failed to change user status.",
+	"GET_PENDING_LICENSES_FAILED": "Failed to get pending licenses.",
+	"GET_PENDING_LICENSES_SUCCESSFUL": "Pending licenses fetched successfully.",
+	"GET_PENDING_KYC_DOCUMENTS_FAILED": "Failed to get pending KYC documents.",
+	"GET_PENDING_KYC_DOCUMENTS_SUCCESSFUL": "Pending KYC documents fetched successfully.",
+	"CHANGE_KYC_DOCUMENT_STATUS_FAILED": "Failed to change KYC document status.",
+	"CHANGE_KYC_DOCUMENT_STATUS_SUCCESSFUL": "KYC document status changed successfully.",
+	"LICENSE_CREATION_FAILED": "License creation failed.",
+	"LICENSE_CREATED_SUCCESSFULLY": "License created successfully."
 }

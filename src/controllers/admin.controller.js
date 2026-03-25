@@ -371,28 +371,27 @@ export default class AdminController {
   }
 
   static async listUsers(request) {
-      const { payload, headers } = request;
-      return new Promise((resolve) => {
-        AdminService.listUsers({ payload, headers }, (err, response) => {
-          if (err) {
-            return resolve({
-              status: 400,
-              data: null,
-              error: {
-                message: headers?.i18n.__(err.message || "LIST_USERS_FAILED"),
-                reason: err.message,
-              },
-            });
-          }
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.listUsers({ payload, headers }, (err, response) => {
+        if (err) {
           return resolve({
-            status: 200,
-            data: response.data,
-            message: headers?.i18n.__("LIST_USERS_SUCCESSFUL"),
-            error: null,
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(err.message || "LIST_USERS_FAILED"),
+              reason: err.message,
+            },
           });
         }
-        );
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("LIST_USERS_SUCCESSFUL"),
+          error: null,
+        });
       });
+    });
   }
   static async changeUserStatus(request) {
     const { payload, headers } = request;
@@ -403,7 +402,9 @@ export default class AdminController {
             status: 400,
             data: null,
             error: {
-              message: headers?.i18n.__(err.message || "CHANGE_USER_STATUS_FAILED"),
+              message: headers?.i18n.__(
+                err.message || "CHANGE_USER_STATUS_FAILED",
+              ),
               reason: err.message,
             },
           });
@@ -412,6 +413,56 @@ export default class AdminController {
           status: 200,
           data: response.data,
           message: headers?.i18n.__("CHANGE_USER_STATUS_SUCCESSFUL"),
+          error: null,
+        });
+      });
+    });
+  }
+  static async getPendingKycDocuments(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.getPendingKycDocuments({ payload, headers }, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(
+                err.message || "GET_PENDING_KYC_DOCUMENTS_FAILED",
+              ),
+              reason: err.message,
+            },
+          });
+        }
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("GET_PENDING_KYC_DOCUMENTS_SUCCESSFUL"),
+          error: null,
+        });
+      });
+    });
+  }
+  static async changeKycDocumentStatus(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.changeKycDocumentStatus({ payload, headers }, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(
+                err.message || "CHANGE_KYC_DOCUMENT_STATUS_FAILED",
+              ),
+              reason: err.message,
+            },
+          });
+        }
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("CHANGE_KYC_DOCUMENT_STATUS_SUCCESSFUL"),
           error: null,
         });
       });

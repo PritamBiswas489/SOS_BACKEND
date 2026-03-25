@@ -1,12 +1,12 @@
-import "../config/environment.js";
+import "../../config/environment.js";
 import express from "express";
-import NgoController from "../controllers/ngo.controller.js";
+import NgoController from "../../controllers/ngo.controller.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { default as jwtVerifyWebNgo } from "../middlewares/jwtVerifyWebNgo.js";
-import User from "../databases/models/User.js";
-import AdminController from "../controllers/admin.controller.js";
+import { default as jwtVerifyWebNgo } from "../../middlewares/jwtVerifyWebNgo.js";
+import User from "../../databases/models/User.js";
+import AdminController from "../../controllers/admin.controller.js";
  
 const router = express.Router();
 

@@ -1,7 +1,7 @@
-import "../config/environment.js";
+import "../../config/environment.js";
 import express from "express";
-import LoginController from "../controllers/login.controller.js";
-import { otpRateLimiter } from "../middlewares/otpRateLimiter.js";
+import LoginController from "../../controllers/login.controller.js";
+import { otpRateLimiter } from "../../middlewares/otpRateLimiter.js";
  
 const router = express.Router();
 

@@ -311,18 +311,21 @@ export default class AdminService {
             as: "ngo",
             attributes: ["name"],
             required: false,
-          }
+          },
         ],
         order: [["created_at", "DESC"]],
       });
-       const data = users.rows.map((user) => {
-                      const userData = user.toJSON();
-                      if (userData.kyc_documents?.document_path) {
-                          console.log("User KYC document path:", userData.kyc_documents.document_path);
-                          userData.kyc_documents.document_path = `${process.env.BASE_URL}/uploads/kyc/${path.basename(userData.kyc_documents.document_path)}`;     
-                      }
-                      return userData;
-                  });
+      const data = users.rows.map((user) => {
+        const userData = user.toJSON();
+        if (userData.kyc_documents?.document_path) {
+          console.log(
+            "User KYC document path:",
+            userData.kyc_documents.document_path,
+          );
+          userData.kyc_documents.document_path = `${process.env.BASE_URL}/uploads/kyc/${path.basename(userData.kyc_documents.document_path)}`;
+        }
+        return userData;
+      });
       return callback(null, {
         data: {
           rows: data,
@@ -360,6 +363,89 @@ export default class AdminService {
       console.error("Error in changeUserStatus:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_USER_STATUS_FAILED"));
+    }
+  }
+  static async getPendingKycDocuments(request, callback) {
+    try {
+      const { payload, headers } = request;
+      const limit = payload.limit || 10;
+      const page = payload.page || 1;
+      const offset = (page - 1) * limit;
+      const pendingKycDocuments = await UserKycDocuments.findAndCountAll({
+        where: { status: "pending" },
+        limit: Number(limit),
+        offset: Number(offset),
+        order: [["created_at", "DESC"]],
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "phone_number"],
+          },
+        ],
+      });
+      const data = pendingKycDocuments.rows.map((doc) => {
+        const docData = doc.toJSON();
+        if (docData.document_path) {
+          docData.document_path = `${process.env.BASE_URL}/uploads/kyc/${path.basename(docData.document_path)}`;
+        }
+        return docData;
+      });
+      return callback(null, {
+        data: {
+          rows: data,
+          total: pendingKycDocuments.count,
+          currentPage: Number(page),
+          totalPages: Math.ceil(pendingKycDocuments.count / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in getPendingKycDocuments:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("GET_PENDING_KYC_DOCUMENTS_FAILED"));
+    }
+  }
+  static async changeKycDocumentStatus(request, callback) {
+    const transaction = await db.sequelize.transaction();
+    try {
+      const { id, status } = request.payload;
+      const kycDocument = await UserKycDocuments.findOne(
+        { where: { id } },
+        { transaction },
+      );
+      if (!kycDocument) {
+        return callback(new Error("KYC_DOCUMENT_NOT_FOUND"));
+      }
+      kycDocument.status = status;
+      await kycDocument.save({ transaction });
+      //generate license if approved
+      if (status === "approved") {
+        const licenseNumber = `KBY-00-${String(kycDocument.user_id).padStart(6, "0")}`;
+
+        const licenseData = {
+          user_id: kycDocument.user_id,
+          license_key: licenseNumber,
+          status: "active",
+        };
+        const license = await Licenses.create(licenseData, { transaction });
+        if(!license){
+            await transaction.rollback();
+            return callback(new Error("LICENSE_CREATION_FAILED"));
+        }
+        await User.update({name: kycDocument.name }, { where: { id: kycDocument.user_id }, transaction });
+        await transaction.commit();
+        return callback(null, {
+          data: {
+           document: kycDocument,
+           license,
+          },
+        });
+      }
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Error in changeKycDocumentStatus:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("CHANGE_KYC_DOCUMENT_STATUS_FAILED"));
     }
   }
 }

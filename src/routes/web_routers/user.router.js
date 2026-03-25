@@ -1,6 +1,6 @@
-import '../config/environment.js';
+import '../../config/environment.js';
 import express from 'express';
-import { default as jwtVerifyWebUser } from '../middlewares/jwtVerifyWebUser.js';
+import { default as jwtVerifyWebUser } from '../../middlewares/jwtVerifyWebUser.js';
 import { default as licenseRouter } from './license.router.js';
 import { default as kycRouter } from './kyc.router.js';
 import { default as AdminRouter } from './admin.router.js';

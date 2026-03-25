@@ -10,7 +10,7 @@ import * as Sentry from "@sentry/node";
 import { Sequelize } from "sequelize";
 import { swaggerSpec } from "./swagger.js";
 import swaggerUi from "swagger-ui-express";
-import { default as apiRouter } from "./routes/index.router.js";
+import { default as apiRouter } from "./routes/web_routers/index.router.js";
 import basicAuth from "express-basic-auth";
 import multer from "multer";
 import customReturn from "./middlewares/responseBuilder.js";

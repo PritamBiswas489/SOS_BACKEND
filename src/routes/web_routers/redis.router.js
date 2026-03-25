@@ -1,8 +1,8 @@
-import "../config/environment.js";
+import "../../config/environment.js";
 import express from "express";
 const router = express.Router();
-import RedisController from "../controllers/redis.controller.js";
-import trackIpAddressDeviceId from '../middlewares/trackIpAddressDeviceId.js';
+import RedisController from "../../controllers/redis.controller.js";
+import trackIpAddressDeviceId from '../../middlewares/trackIpAddressDeviceId.js';
 router.use(trackIpAddressDeviceId);
 /**
  * @swagger
