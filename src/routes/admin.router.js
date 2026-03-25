@@ -84,6 +84,36 @@ router.post("/login-admin-user",  async (req, res) => {
 
 /**
  * @swagger
+ * /api/auth-web/admin/ngo-autocomplete-by-name:
+ *   get:
+ *     summary: Autocomplete NGOs by name
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: NGO name to autocomplete
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: List of matching NGOs
+ *       400:
+ *         description: Invalid query parameters
+ */
+router.get("/ngo-autocomplete-by-name", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.getNgoAutocompleteByName({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
+
+/**
+ * @swagger
  * /api/auth-web/admin/ngo-list:
  *   get:
  *     summary: Get list of NGOs
@@ -96,6 +126,12 @@ router.post("/login-admin-user",  async (req, res) => {
  *           type: string
  *           enum: [verified, unverified]
  *         description: Filter NGOs by status
+ *       - in: query
+ *         name: ngo_id
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Filter by specific NGO ID
  *       - in: query
  *         name: limit
  *         schema:
@@ -385,6 +421,86 @@ router.post("/upload-apk", jwtVerifyWebAdmin, upload.single("apkFile"), async (r
  */
 router.get("/apk-releases", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.getApkReleases({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/user-list:
+ *   get:
+ *     summary: Get list of users
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page (default 10)
+ *       - in: query
+ *         name: ngo_id
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Filter users by NGO ID
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *       400:
+ *         description: Invalid query parameters
+ */
+router.get("/user-list", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.listUsers({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+   
+
+/**
+ * @swagger
+ * /api/auth-web/admin/change-user-status:
+ *   post:
+ *     summary: Change user status
+ *     tags:
+ *       - Admin authenticated routes
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 description: User ID to change status
+ *               status:
+ *                 type: string
+ *                 enum: ["active", "inactive"]
+ *                 description: New status for the user
+ *             required:
+ *               - id
+ *               - status
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: User status changed successfully
+ *       400:
+ *         description: Invalid input or status change failed
+ */
+router.post("/change-user-status", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.changeUserStatus({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
 

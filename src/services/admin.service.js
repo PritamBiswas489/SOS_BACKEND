@@ -1,6 +1,6 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
-const { User } = db;
+const { User, Licenses, UserKycDocuments } = db;
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
@@ -95,13 +95,16 @@ export default class AdminService {
   }
   static async listNgo(request, callback) {
     try {
-      const { page, limit, status } = request.payload;
+      const { page, limit, status, ngo_id = null } = request.payload;
       const offset = (page - 1) * limit;
       const whereClause = { role: "NGO" };
       if (status === "verified") {
         whereClause.is_verified = true;
       } else if (status === "unverified") {
         whereClause.is_verified = false;
+      }
+      if (ngo_id) {
+        whereClause.id = ngo_id;
       }
       const ngos = await User.findAndCountAll({
         where: whereClause,
@@ -254,6 +257,109 @@ export default class AdminService {
       console.error("Error in upgradeNgoUserLimit:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("UPGRADE_NGO_USER_LIMIT_FAILED"));
+    }
+  }
+
+  static async getNgoAutocompleteByName(request, callback) {
+    try {
+      const { name } = request.payload;
+      const ngos = await User.findAll({
+        where: {
+          role: "NGO",
+          name: { [db.Sequelize.Op.iLike]: `%${name}%` },
+        },
+        attributes: ["id", "name"],
+        limit: 10,
+      });
+      return callback(null, { data: ngos });
+    } catch (error) {
+      console.error("Error in getNgoAutocompleteByName:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("GET_NGO_AUTOCOMPLETE_FAILED"));
+    }
+  }
+  // Admin service method for listing users under an NGO with pagination and filtering
+  static async listUsers(request, callback) {
+    try {
+      const { page, limit, ngo_id } = request.payload;
+      const offset = (page - 1) * limit;
+      const whereClause = { role: "USER" };
+      if (ngo_id) {
+        whereClause.ngo_id = ngo_id;
+      }
+      const users = await User.findAndCountAll({
+        where: whereClause,
+        limit: Number(limit),
+        offset: Number(offset),
+        order: [["created_at", "DESC"]],
+        attributes: { exclude: ["password_hash", "hex_salt"] },
+        include: [
+          {
+            model: Licenses,
+            as: "licenses",
+            attributes: ["license_key", "status"],
+            required: false,
+          },
+          {
+            model: UserKycDocuments,
+            as: "kyc_documents",
+            attributes: ["address", "document_type", "document_path", "status"],
+            required: false,
+          },
+          {
+            model: User,
+            as: "ngo",
+            attributes: ["name"],
+            required: false,
+          }
+        ],
+        order: [["created_at", "DESC"]],
+      });
+       const data = users.rows.map((user) => {
+                      const userData = user.toJSON();
+                      if (userData.kyc_documents?.document_path) {
+                          console.log("User KYC document path:", userData.kyc_documents.document_path);
+                          userData.kyc_documents.document_path = `${process.env.BASE_URL}/uploads/kyc/${path.basename(userData.kyc_documents.document_path)}`;     
+                      }
+                      return userData;
+                  });
+      return callback(null, {
+        data: {
+          rows: data,
+          total: users.count,
+          currentPage: Number(page),
+          totalPages: Math.ceil(users.count / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listUsers:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_USERS_FAILED"));
+    }
+  }
+  static async changeUserStatus(request, callback) {
+    try {
+      const { id, status } = request.payload;
+      const user = await User.findOne({
+        where: { id, role: "USER" },
+      });
+      if (!user) {
+        return callback(new Error("USER_NOT_FOUND"));
+      }
+      user.is_active = status === "active";
+      await user.save();
+      return callback(null, {
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          is_active: user.is_active,
+        },
+      });
+    } catch (error) {
+      console.error("Error in changeUserStatus:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("CHANGE_USER_STATUS_FAILED"));
     }
   }
 }

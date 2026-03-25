@@ -43,6 +43,22 @@ const relation = (db) => {
     as: "user",
   });
 
+
+   
+  User.belongsTo(User, {
+    foreignKey: "ngo_id",
+    as: "ngo",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  User.hasOne(User, {
+    foreignKey: "ngo_id",
+    as: "users",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  
+
 };
 
 export default relation;

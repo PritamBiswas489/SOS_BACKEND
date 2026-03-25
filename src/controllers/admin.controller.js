@@ -287,38 +287,123 @@ export default class AdminController {
   static async getApkReleases(request) {
     const { payload, headers } = request;
     return new Promise((resolve) => {
-      AndroidApkService.getApkReleases({ payload, headers }, (err, response) => {
-        if (err) {
+      AndroidApkService.getApkReleases(
+        { payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "GET_APK_RELEASES_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
           return resolve({
-            status: 400,
-            data: null,
-            error: {
-              message: headers?.i18n.__(
-                err.message || "GET_APK_RELEASES_FAILED",
-              ),
-              reason: err.message,
-            },
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("GET_APK_RELEASES_SUCCESSFUL"),
+            error: null,
           });
-        }
-        return resolve({
-          status: 200,
-          data: response.data,
-          message: headers?.i18n.__("GET_APK_RELEASES_SUCCESSFUL"),
-          error: null,
-        });
-      });
+        },
+      );
     });
   }
   static async upgradeNgoUserLimit(request) {
     const { payload, headers } = request;
     return new Promise((resolve) => {
-      AdminService.upgradeNgoUserLimit({ payload, headers }, (err, response) => {
+      AdminService.upgradeNgoUserLimit(
+        { payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "UPGRADE_NGO_USER_LIMIT_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("UPGRADE_NGO_USER_LIMIT_SUCCESSFUL"),
+            error: null,
+          });
+        },
+      );
+    });
+  }
+  // AdminController method for getting NGO autocomplete by name
+  static async getNgoAutocompleteByName(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.getNgoAutocompleteByName(
+        { payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "GET_NGO_AUTOCOMPLETE_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("GET_NGO_AUTOCOMPLETE_SUCCESSFUL"),
+            error: null,
+          });
+        },
+      );
+    });
+  }
+
+  static async listUsers(request) {
+      const { payload, headers } = request;
+      return new Promise((resolve) => {
+        AdminService.listUsers({ payload, headers }, (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(err.message || "LIST_USERS_FAILED"),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("LIST_USERS_SUCCESSFUL"),
+            error: null,
+          });
+        }
+        );
+      });
+  }
+  static async changeUserStatus(request) {
+    const { payload, headers } = request;
+    return new Promise((resolve) => {
+      AdminService.changeUserStatus({ payload, headers }, (err, response) => {
         if (err) {
           return resolve({
             status: 400,
             data: null,
             error: {
-              message: headers?.i18n.__(err.message || "UPGRADE_NGO_USER_LIMIT_FAILED"),
+              message: headers?.i18n.__(err.message || "CHANGE_USER_STATUS_FAILED"),
               reason: err.message,
             },
           });
@@ -326,7 +411,7 @@ export default class AdminController {
         return resolve({
           status: 200,
           data: response.data,
-          message: headers?.i18n.__("UPGRADE_NGO_USER_LIMIT_SUCCESSFUL"),
+          message: headers?.i18n.__("CHANGE_USER_STATUS_SUCCESSFUL"),
           error: null,
         });
       });

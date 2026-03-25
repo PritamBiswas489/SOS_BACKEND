@@ -446,5 +446,11 @@
 	"LIST_USERS_FOR_NGO_SUCCESSFUL": "Users for NGO listed successfully.",
 	"LIST_USERS_FOR_NGO_FAILED": "Failed to list users for NGO.",
 	"NGO phone number must be valid.": "NGO phone number must be valid.",
-	"UPGRADE_NGO_USER_LIMIT_SUCCESSFUL": "NGO user limit upgraded successfully."
+	"UPGRADE_NGO_USER_LIMIT_SUCCESSFUL": "NGO user limit upgraded successfully.",
+	"GET_NGO_AUTOCOMPLETE_SUCCESSFUL": "NGO autocomplete fetched successfully.",
+	"LIST_USERS_FAILED": "Failed to list users.",
+	"LIST_USERS_SUCCESSFUL": "Users listed successfully.",
+	"CHANGE_USER_STATUS_SUCCESSFUL": "User status changed successfully.",
+	"GET_NGO_AUTOCOMPLETE_FAILED": "Failed to get NGO autocomplete.",
+	"CHANGE_USER_STATUS_FAILED": "Failed to change user status."
 }
