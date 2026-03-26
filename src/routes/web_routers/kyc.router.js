@@ -11,7 +11,7 @@ const router = express.Router();
 
 const kycUploadDir = path.join(process.cwd(), "uploads", "kyc");
 if (!fs.existsSync(kycUploadDir)) {
-  fs.mkdirSync(kycUploadDir, { recursive: true });
+  fs.mkdirSync(kycUploadDir, { recursive: true, mode: 0o755 });
 }
 
 const storage = multer.diskStorage({

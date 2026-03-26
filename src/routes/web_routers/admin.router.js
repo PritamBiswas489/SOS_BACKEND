@@ -324,7 +324,7 @@ const storage = multer.diskStorage({
    // Ensure the uploads/apks directory exists
    const uploadDir = "uploads/apks";
    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+      fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
    }
    cb(null, uploadDir);
    },

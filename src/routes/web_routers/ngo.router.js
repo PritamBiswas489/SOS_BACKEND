@@ -7,6 +7,7 @@ import fs from "fs";
 import { default as jwtVerifyWebNgo } from "../../middlewares/jwtVerifyWebNgo.js";
 import User from "../../databases/models/User.js";
 import AdminController from "../../controllers/admin.controller.js";
+import crypto from "crypto";
  
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = "uploads/ngo_certificates";
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
     }
     cb(null, dir);
   },
@@ -23,7 +24,8 @@ const storage = multer.diskStorage({
     // Use original file name with timestamp to avoid conflicts
     const ext = path.extname(file.originalname);
     const basename = path.basename(file.originalname, ext);
-    cb(null, `${basename}-${Date.now()}${ext}`);
+    const unique = `${Date.now()}-${crypto.randomUUID()}${ext}`;
+    cb(null, unique);
   },
 });
 
@@ -129,7 +131,7 @@ router.post("/login-ngo", async (req, res) => {
 
 const kycUploadDir = path.join(process.cwd(), "uploads", "kyc");
 if (!fs.existsSync(kycUploadDir)) {
-  fs.mkdirSync(kycUploadDir, { recursive: true });
+  fs.mkdirSync(kycUploadDir, { recursive: true, mode: 0o755 });
 }
 
 const storageKyc = multer.diskStorage({
@@ -138,13 +140,21 @@ const storageKyc = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}${ext}`);
+    const unique = `${Date.now()}-${crypto.randomUUID()}${ext}`;
+    cb(null, unique);
   },
 });
 
 const uploadKyc = multer({
   storage: storageKyc,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB per file
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error("Only JPEG, PNG, and PDF files are allowed."));
+    }
+    cb(null, true);
+  },
 });
 /**
  * @swagger
@@ -194,6 +204,7 @@ const uploadKyc = multer({
 router.post(
   "/ngo-create-user", jwtVerifyWebNgo,
   (req, res, next) => {
+   
     uploadKyc.single("document")(req, res, function (err) {
       if (err && err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({
