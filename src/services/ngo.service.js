@@ -183,6 +183,7 @@ export default class NgoService {
 
       // 6. Submit KYC — properly awaited via promisify
       const kycResult = await promisify(
+        
         KycService.submitKycDocuments.bind(KycService),
         {
           userId: createUser.id,

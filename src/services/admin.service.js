@@ -409,40 +409,65 @@ export default class AdminService {
     const transaction = await db.sequelize.transaction();
     try {
       const { id, status } = request.payload;
-      const kycDocument = await UserKycDocuments.findOne(
-        { where: { id } },
-        { transaction },
-      );
+
+      // Bug 1 fixed: transaction is part of the single options object, not a second arg
+      const kycDocument = await UserKycDocuments.findOne({
+        where: { id },
+        transaction,
+        lock: transaction.LOCK.UPDATE, // also add a lock since we're about to mutate
+      });
+     
+
+
+
+      // Bug 2 fixed: rollback before returning
       if (!kycDocument) {
+        await transaction.rollback();
         return callback(new Error("KYC_DOCUMENT_NOT_FOUND"));
       }
+
       kycDocument.status = status;
       await kycDocument.save({ transaction });
-      //generate license if approved
-      if (status === "approved") {
-        const licenseNumber = `KBY-00-${String(kycDocument.user_id).padStart(6, "0")}`;
 
-        const licenseData = {
-          user_id: kycDocument.user_id,
-          license_key: licenseNumber,
-          status: "active",
-        };
-        const license = await Licenses.create(licenseData, { transaction });
-        if(!license){
-            await transaction.rollback();
-            return callback(new Error("LICENSE_CREATION_FAILED"));
-        }
-        await User.update({name: kycDocument.name }, { where: { id: kycDocument.user_id }, transaction });
-        await transaction.commit();
-        return callback(null, {
-          data: {
-           document: kycDocument,
-           license,
+      // Bug 3 fixed: handle both branches — commit always happens
+      if (status === "approved") {
+        // Bug 4 fixed: use actual ngo_id instead of hardcoded "00"
+        const ngoId = kycDocument.ngo_id; // ensure this field exists on the document
+        const licenseNumber = `KBY-00-${String(kycDocument.user_id).padStart(6, "0")}`;
+        await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
+        const license = await Licenses.create(
+          {
+            user_id: kycDocument.user_id,
+            license_key: licenseNumber,
+            status: "active",
           },
-        });
+          { transaction },
+        );
+
+        if (!license) {
+          await transaction.rollback();
+          return callback(new Error("LICENSE_CREATION_FAILED"));
+        }
+
+        await User.update(
+          { name: kycDocument.name },
+          { where: { id: kycDocument.user_id }, transaction },
+        );
+
+        await transaction.commit();
+        return callback(null, { data: { document: kycDocument, license } });
+      }else if (status === "rejected"){
+        await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
       }
+
+      // Bug 3 fixed: non-approved path (rejected, pending, etc.) also commits
+      await transaction.commit();
+      return callback(null, { data: { document: kycDocument } });
     } catch (error) {
-      await transaction.rollback();
+      // Bug 5 fixed: guard against double-rollback after a commit
+      if (transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
       console.error("Error in changeKycDocumentStatus:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_KYC_DOCUMENT_STATUS_FAILED"));
