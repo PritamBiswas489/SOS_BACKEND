@@ -1,0 +1,302 @@
+import "../config/environment.js";
+import db from "../databases/models/index.js";
+import * as Sentry from "@sentry/node";
+const { Op, User, TrustedContacts, Devices } = db;
+
+export default class TrustedContactService {
+  //send trusted contact invitation
+  static async sendTrustedContactInvitation(
+    { userid, payload, headers },
+    callback,
+  ) {
+    console.log("Sending trusted contact invitation for user ID:", userid);
+    console.log("Payload:", payload);
+    try {
+      const { name, mobile_number, relationship } = payload;
+      const getUser = await User.findOne({
+        where: { phone_number: mobile_number, role: "USER", is_active: true },
+      });
+      if (!getUser) {
+        return callback(
+          new Error("THIS_MOBILE_NUMBER_IS_NOT_REGISTERED"),
+          null,
+        );
+      }
+      if (getUser.id === userid) {
+        return callback(
+          new Error("CANNOT_ADD_YOURSELF_AS_TRUSTED_CONTACT"),
+          null,
+        );
+      }
+
+      //Now we can add the trusted contact to the user's trusted contact list
+      const checkExistingContact = await TrustedContacts.findOne({
+        where: {
+          user_id: userid,
+          trusted_user_id: getUser.id,
+        },
+      });
+      if (checkExistingContact) {
+        return callback(new Error("TRUSTED_CONTACT_ALREADY_EXISTS"), null);
+      }
+      const newTrustedContact = await TrustedContacts.create({
+        user_id: userid,
+        trusted_user_id: getUser.id,
+        nickname: name,
+        relationship: relationship,
+      });
+      console.log(
+        "Trusted contact invitation sent successfully:",
+        newTrustedContact,
+      );
+
+      return callback(null, { data: newTrustedContact });
+    } catch (error) {
+      console.error("Error sending trusted contact invitation:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("SEND_INVITATION_FAILED"), null);
+    }
+  }
+  //accept trusted contact invitation
+  static async acceptTrustedContactInvitation(
+    { userid, payload, headers },
+    callback,
+  ) {
+    const transaction = await db.sequelize.transaction();
+    try {
+      const { id: invitationId } = payload;
+      const invitation = await TrustedContacts.findOne(
+        {
+          where: {
+            id: invitationId,
+            trusted_user_id: userid,
+          },
+        },
+        { 
+            lock: transaction.LOCK.UPDATE,
+            transaction 
+        },
+      );
+      if (!invitation) {
+        await transaction.rollback();
+        return callback(new Error("INVITATION_NOT_FOUND"), null);
+      }
+      invitation.status = "accepted";
+      await invitation.save({ transaction });
+
+      await TrustedContacts.create(
+        {
+          user_id: invitation.trusted_user_id,
+          trusted_user_id: invitation.user_id,
+          nickname: invitation.nickname,
+          relationship: invitation.relationship,
+          status: "accepted",
+        },
+        {
+          transaction,
+        },
+      );
+      await transaction.commit();
+      return callback(null, { data: invitation });
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Error accepting trusted contact invitation:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("ACCEPT_INVITATION_FAILED"), null);
+    }
+  }
+  //get pending trusted contact invitations of user
+  static async getPendingIncommingTrustedContactInvitations(
+    { userid, payload, headers },
+    callback,
+  ) {
+    const { page = 1, limit = 10 } = payload;
+    const offset = (page - 1) * limit;
+    try {
+      const pendingInvitations = await TrustedContacts.findAndCountAll({
+        where: {
+          trusted_user_id: userid,
+          status: "pending",
+        },
+        offset: offset,
+        limit: limit,
+        include: [
+          {
+            model: User,
+            as: "inviter",
+            where: { is_active: true },
+            attributes: ["id", "name", "phone_number", "profile_photo"],
+            required: true,
+          },
+        ],
+      });
+      return callback(null, { data: pendingInvitations });
+    } catch (error) {
+      console.error(
+        "Error fetching pending trusted contact invitations:",
+        error,
+      );
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_PENDING_INVITATIONS_FAILED"), null);
+    }
+  }
+  static async getPendingOutgoingTrustedContactInvitations(request, callback) {
+    try {
+      const { payload, headers, userid } = request;
+      const { page = 1, limit = 10 } = payload;
+      const offset = (page - 1) * limit;
+      const pendingInvitations = await TrustedContacts.findAndCountAll({
+        where: {
+          user_id: userid,
+          status: "pending",
+        },
+        offset: offset,
+        limit: limit,
+        include: [
+          {
+            model: User,
+            as: "trusted_contact",
+            where: { is_active: true },
+            attributes: ["id", "name", "phone_number", "profile_photo"],
+            required: true,
+          },
+        ],
+      });
+      return callback(null, { data: pendingInvitations });
+    } catch (error) {
+      console.error(
+        "Error fetching pending outgoing trusted contact invitations:",
+        error,
+      );
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_PENDING_OUTGOING_INVITATIONS_FAILED"), null);
+    }
+  }
+  //get trusted contacts of user
+  static async getTrustedContacts({ userid, payload, headers }, callback) {
+    try {
+      const { page = 1, limit = 10 } = payload;
+      const offset = (page - 1) * limit;
+      const trustedContacts = await TrustedContacts.findAndCountAll({
+        where: {
+          user_id: userid,
+          status: "accepted",
+        },
+        offset: offset,
+        limit: limit,
+        include: [
+          {
+            model: User,
+            as: "trusted_contact",
+            where: { is_active: true },
+            include: [
+              {
+                model: Devices,
+                as: "devices",
+                where: { is_active: true },
+                required: false,
+                attributes: ["id", "device_token", "device_type"],
+              },
+            ],
+            attributes: ["id", "name", "phone_number", "profile_photo"],
+            required: true,
+          },
+        ],
+      });
+      return callback(null, { data: trustedContacts });
+    } catch (error) {
+      console.error("Error fetching trusted contacts:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_TRUSTED_CONTACTS_FAILED"), null);
+    }
+  }
+  //cancel trusted contact invitation
+  static async cancelTrustedContactInvitation(
+    { userid, payload, headers },
+    callback,
+  ) {
+    try {
+      const { id: invitationId } = payload;
+      const invitation = await TrustedContacts.findOne({
+        where: {
+          id: invitationId,
+        },
+      });
+      if (!invitation) {
+        return callback(new Error("INVITATION_NOT_FOUND"), null);
+      }
+      if (
+        invitation.user_id !== userid &&
+        invitation.trusted_user_id !== userid
+      ) {
+        return callback(new Error("UNAUTHORIZED_ACTION"), null);
+      }
+      if(invitation.status !== "pending"){
+        return callback(new Error("ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED"), null);
+      }
+      invitation.status = "canceled";
+      await invitation.save();
+      return callback(null, { data: invitation });
+    } catch (error) {
+      console.error("Error canceling trusted contact invitation:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("CANCEL_INVITATION_FAILED"), null);
+    }
+  }
+  //delete trusted contact invitation
+  static async deleteTrustedContactInvitation(
+    { userid, payload, headers },
+    callback,
+  ) {
+    try {
+      const { id: invitationId } = payload;
+      const invitation = await TrustedContacts.findOne({
+        where: {
+          id: invitationId,
+        },
+      });
+      if (!invitation) {
+        return callback(new Error("INVITATION_NOT_FOUND"), null);
+      }
+      if (
+        invitation.user_id !== userid &&
+        invitation.trusted_user_id !== userid
+      ) {
+        return callback(new Error("UNAUTHORIZED_ACTION"), null);
+      }
+      if (invitation.status === "accepted") {
+        await TrustedContacts.destroy({
+          where: {
+            [Op.or]: [
+              {
+                user_id: invitation.user_id,
+                trusted_user_id: invitation.trusted_user_id,
+              },
+              {
+                user_id: invitation.trusted_user_id,
+                trusted_user_id: invitation.user_id,
+              },
+            ],
+          },
+        });
+        return callback(null, {
+          data: "Successfully deleted trusted contact",
+        });
+      }
+      
+      await invitation.destroy();
+      return callback(null, {
+        data: "Successfully deleted trusted contact invitation",
+      });
+    } catch (error) {
+      console.error("Error deleting trusted contact:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
+    }
+  }
+
+  static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {
+    console.log("Fetching trusted contact devices tokens for user ID:", userid);
+    console.log("Payload:", payload);
+  }
+}

@@ -36,13 +36,16 @@ export default async (req, res, next) => {
 		try {
 			const verifiedData = jwt.verify(token, ACCESS_TOKEN_SECRET_KEY);
 			const getUserById = await UserService.getUserById(verifiedData.id);	
-			if(getUserById.status!=='active'){
+			if(!getUserById.is_active){
 				return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 			}
-			const checkDeviceIdExistance = await UserService.checkDeviceIdExistance(verifiedData.id, deviceID);
-			if(!checkDeviceIdExistance && checkdeviceid){
-				return res.send({ status: 403, data: [], error: { message: i18n.__("DEVICE_ID_MISMATCH") } });
+			if(getUserById.role !== "USER"){
+				return res.send({ status: 403, data: [], error: { message: i18n.__("UNAUTHORIZED_ACTION") } });
 			}
+			// const checkDeviceIdExistance = await UserService.checkDeviceIdExistance(verifiedData.id, deviceID);
+			// if(!checkDeviceIdExistance && checkdeviceid){
+			// 	return res.send({ status: 403, data: [], error: { message: i18n.__("DEVICE_ID_MISMATCH") } });
+			// }
 			req.user = verifiedData;
 			return next();
 		} catch (e) {
@@ -70,13 +73,16 @@ export default async (req, res, next) => {
 
 				const getUserById = await UserService.getUserById(data.id);
 				 
-				if(getUserById.status!=='active'){
+				if(!getUserById.is_active){
 					return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 				}
-				const checkDeviceIdExistance = await UserService.checkDeviceIdExistance(data.id, deviceID);
-				if(!checkDeviceIdExistance && checkdeviceid){
-					return res.send({ status: 403, data: [], error: { message: i18n.__("DEVICE_ID_MISMATCH") } });
-				}
+				if(getUserById.role !== "USER"){
+			    	return res.send({ status: 403, data: [], error: { message: i18n.__("UNAUTHORIZED_ACTION") } });
+			}
+				// const checkDeviceIdExistance = await UserService.checkDeviceIdExistance(data.id, deviceID);
+				// if(!checkDeviceIdExistance && checkdeviceid){
+				// 	return res.send({ status: 403, data: [], error: { message: i18n.__("DEVICE_ID_MISMATCH") } });
+				// }
 
 				req.user = payload;
 				const accessToken = await generateToken(payload, JWT_ALGO, ACCESS_TOKEN_SECRET_KEY, Number(ACCESS_TOKEN_EXPIRES_IN));

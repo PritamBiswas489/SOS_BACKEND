@@ -5,7 +5,7 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "SOS alert API",
+      title: "Koby tech silent guard API (Web)",
       version: "1.0.0",
       description: "API docs with Swagger for travel wallet",
     },
@@ -18,15 +18,8 @@ const options = {
       {name:"Admin authenticated routes", description: "Admin management endpoints"},
       { name: "KYC routes", description: "KYC management endpoints" },
       { name: "License routes", description: "License management endpoints" },
-      
-      {
-        name: "Redis testing routes",
-        description: "Endpoints for Redis cache management",
-      },
-      {
-        name: "Testing endpoints",
-        description: "Endpoints for testing purposes",
-      },
+      { name: "Redis testing routes", description: "Endpoints for Redis cache management" },
+      { name: "Testing endpoints",  description: "Endpoints for testing purposes",  },
     ],
     servers: [
       {

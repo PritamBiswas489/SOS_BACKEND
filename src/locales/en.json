@@ -460,5 +460,33 @@
 	"CHANGE_KYC_DOCUMENT_STATUS_FAILED": "Failed to change KYC document status.",
 	"CHANGE_KYC_DOCUMENT_STATUS_SUCCESSFUL": "KYC document status changed successfully.",
 	"LICENSE_CREATION_FAILED": "License creation failed.",
-	"LICENSE_CREATED_SUCCESSFULLY": "License created successfully."
+	"LICENSE_CREATED_SUCCESSFULLY": "License created successfully.",
+	"GET_PROFILE_SUCCESSFUL": "GET_PROFILE_SUCCESSFUL",
+	"SAVE_DEVICE_TOKEN_SUCCESSFUL": "SAVE_DEVICE_TOKEN_SUCCESSFUL",
+	"SEND_INVITATION_SUCCESSFUL": "Invitation sent successfully.",
+	"TRUSTED_CONTACT_ALREADY_EXISTS": "Trusted contact already exists.",
+	"THIS_MOBILE_NUMBER_IS_NOT_REGISTERED": "This mobile number is not registered on Travel Money.",
+	"CANNOT_ADD_YOURSELF_AS_TRUSTED_CONTACT": "You cannot add yourself as a trusted contact.",
+	"SEND_INVITATION_FAILED": "Failed to send invitation.",
+	"GET_PROFILE_FAILED": "Failed to get profile.",
+	"SAVE_DEVICE_TOKEN_FAILED": "Failed to save device token.",
+	"INVITATION_NOT_FOUND": "Invitation not found.",
+	"ACCEPT_INVITATION_FAILED": " Failed to accept invitation.",
+	"CANCEL_INVITATION_FAILED": "Failed to cancel invitation.",
+	"DELETE_TRUSTED_CONTACT_FAILED": "Failed to delete trusted contact.",
+	"DELETE_INVITATION_SUCCESSFUL": "Invitation deleted successfully.",
+	"ACCEPT_INVITATION_SUCCESSFUL": "Invitation accepted successfully.",
+	"CANCEL_INVITATION_SUCCESSFUL": "Invitation cancelled successfully.",
+	"DELETE_TRUSTED_CONTACT_SUCCESSFUL": "Trusted contact deleted successfully.",
+	"GET_PENDING_INVITATIONS_SUCCESSFUL": "Get pending invitations successful.",
+	"GET_TRUSTED_CONTACTS_SUCCESSFUL": "Get trusted contacts successful.",
+	"GET_PENDING_OUTGOING_INVITATIONS_FAILED": "Get pending outgoing invitations failed.",
+	"GET_PENDING_OUTGOING_INVITATIONS_SUCCESSFUL": "Get pending outgoing invitations successful.",
+    "GET_PENDING_INVITATIONS_FAILED": "Get pending invitations failed.",
+    "GET_TRUSTED_CONTACTS_FAILED": "Get trusted contacts failed.",
+    "ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED": "Only pending invitations can be canceled.",
+	"DELETE_INVITATION_FAILED": "Failed to delete invitation."
+	 
+	
+	
 }

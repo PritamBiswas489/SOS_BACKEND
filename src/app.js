@@ -9,8 +9,10 @@ import bodyParser from "body-parser";
 import * as Sentry from "@sentry/node";
 import { Sequelize } from "sequelize";
 import { swaggerSpec } from "./swagger.js";
+import { swaggerSpecMobile } from "./swagger.mobile.js";
 import swaggerUi from "swagger-ui-express";
 import { default as apiRouter } from "./routes/web_routers/index.router.js";
+import { default as mobileApiRouter } from "./routes/mobile_routers/mobile.index.router.js";
 import basicAuth from "express-basic-auth";
 import multer from "multer";
 import customReturn from "./middlewares/responseBuilder.js";
@@ -18,7 +20,7 @@ import locales from "./middlewares/locales.js";
 import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
 import cookieParser from "cookie-parser";
- 
+
 import {
   otpWhatsappService,
   otpSmsService,
@@ -43,32 +45,31 @@ const publicDir =
 const app = express();
 
 app.use((req, res, next) => {
-  
   if (process.env.NODE_ENV === "development") {
-      const REQUIRED_NODE_VERSION = "20.19.4"; // Define your required version
-      const CURRENT_NODE_VERSION = process.versions.node; // Get current Node.js version
+    const REQUIRED_NODE_VERSION = "20.19.4"; // Define your required version
+    const CURRENT_NODE_VERSION = process.versions.node; // Get current Node.js version
 
-      console.log(" Required node version", REQUIRED_NODE_VERSION);
-      console.log(" Current node version", CURRENT_NODE_VERSION);
+    console.log(" Required node version", REQUIRED_NODE_VERSION);
+    console.log(" Current node version", CURRENT_NODE_VERSION);
 
-      // Check if current version meets the requirement
-      if (CURRENT_NODE_VERSION !== REQUIRED_NODE_VERSION) {
-        console.error(
-          `\x1b[31m[ERROR] Node.js version mismatch!\x1b[0m`,
-          `\nRequired: ${REQUIRED_NODE_VERSION}+`,
-          `\nCurrent: ${CURRENT_NODE_VERSION}`,
-        );
-
-        return res.status(503).json({
-          error: "Service Unavailable",
-          message: `Server is running on an incompatible Node.js version (${CURRENT_NODE_VERSION}). Required version: ${REQUIRED_NODE_VERSION} or higher.`,
-          currentVersion: CURRENT_NODE_VERSION,
-          requiredVersion: REQUIRED_NODE_VERSION,
-        });
-      }
-      console.log(
-        `\x1b[32m[INFO] Node.js version check passed.\x1b[0m Current version: ${CURRENT_NODE_VERSION}`,
+    // Check if current version meets the requirement
+    if (CURRENT_NODE_VERSION !== REQUIRED_NODE_VERSION) {
+      console.error(
+        `\x1b[31m[ERROR] Node.js version mismatch!\x1b[0m`,
+        `\nRequired: ${REQUIRED_NODE_VERSION}+`,
+        `\nCurrent: ${CURRENT_NODE_VERSION}`,
       );
+
+      return res.status(503).json({
+        error: "Service Unavailable",
+        message: `Server is running on an incompatible Node.js version (${CURRENT_NODE_VERSION}). Required version: ${REQUIRED_NODE_VERSION} or higher.`,
+        currentVersion: CURRENT_NODE_VERSION,
+        requiredVersion: REQUIRED_NODE_VERSION,
+      });
+    }
+    console.log(
+      `\x1b[32m[INFO] Node.js version check passed.\x1b[0m Current version: ${CURRENT_NODE_VERSION}`,
+    );
   }
 
   next();
@@ -81,11 +82,11 @@ if (SENTRY_ENABLED === "true") {
 }
 app.use(
   cors({
-     origin: [
-      "http://localhost:4000",   
-      "http://localhost:3000",               // local
-      "https://back-sos.pritamaqua.aqualeafitsol.com",      // production
-      "https://web-sos.pritamaqua.aqualeafitsol.com"
+    origin: [
+      "http://localhost:4000",
+      "http://localhost:3000", // local
+      "https://back-sos.pritamaqua.aqualeafitsol.com", // production
+      "https://web-sos.pritamaqua.aqualeafitsol.com",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -94,10 +95,10 @@ app.use(
       "Authorization",
       "accesstoken",
       "refreshtoken",
-       "x-csrf-token"
+      "x-csrf-token",
     ],
     exposedHeaders: ["accesstoken", "refreshtoken"],
-  })
+  }),
 );
 // app.options("*", cors());
 
@@ -105,12 +106,12 @@ app.use(compression());
 app.use(helmet());
 app.use(locales);
 app.use((req, res, next) => {
-   const defaultHeaders = {
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    'accept': '*/*',
-    'connection': 'keep-alive',
-    'referer': 'https://back.travelmoney.co.il/',
-    'cookie': 'cf_clearance=xyz123; session_token=abc456;',
+  const defaultHeaders = {
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    accept: "*/*",
+    connection: "keep-alive",
+    referer: "https://back.travelmoney.co.il/",
+    cookie: "cf_clearance=xyz123; session_token=abc456;",
   };
 
   for (const [key, value] of Object.entries(defaultHeaders)) {
@@ -125,12 +126,12 @@ app.use((req, res, next) => {
 app.use(customReturn);
 
 app.use(
-  ["/api-docs", "/swagger"],
+  ["/api-docs", "/api-mobile-docs", "/swagger"],
   basicAuth({
     users: { admin: "admin" }, // username:password
     challenge: true, // shows browser auth popup
     unauthorizedResponse: (req) => "Unauthorized",
-  })
+  }),
 );
 
 app.use((err, req, res, next) => {
@@ -139,15 +140,32 @@ app.use((err, req, res, next) => {
   }
   next(err);
 });
+
+app.use(express.static(publicDir));
  
 
+// Swagger routes
 app.use(
   "/api-docs",
-  swaggerUi.serve,
+  swaggerUi.serveFiles(swaggerSpec, {}),
   swaggerUi.setup(swaggerSpec, {
     swaggerOptions: {
       withCredentials: true,
+      persistAuthorization: true,
     },
+    customJs: "/swagger-restore-api.js",
+  })
+);
+
+app.use(
+  "/api-mobile-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpecMobile, {
+    swaggerOptions: {
+      withCredentials: true,
+      persistAuthorization: true,
+    },
+    customJs: "/swagger-restore-mobile.js",
   })
 );
 
@@ -173,9 +191,9 @@ app.use(
     limit: "500mb",
     extended: true,
     parameterLimit: 50000,
-  })
+  }),
 );
-app.use(express.static(publicDir));
+
 
 /**
  * @swagger
@@ -288,6 +306,7 @@ app.get("/test-error2", (req, res) => {
 });
 
 app.use("/api", apiRouter);
+app.use("/api-mobile", mobileApiRouter);
 if (SENTRY_ENABLED === "true") {
   (async () => {
     Sentry.setupExpressErrorHandler(app);
