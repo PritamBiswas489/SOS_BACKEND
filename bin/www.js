@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import chalk from 'chalk';
 const { PORT } = process.env;
 import app from '../src/app.js';
+import { initSocketServer } from '../src/socket/index.js';
 /**
  * Normalize a port into a number, string, or false.
  */
@@ -39,6 +40,9 @@ app.set('port', port);
  */
 
 const server = createServer(app);
+
+
+initSocketServer(server);
 
 /**
  * Event listener for HTTP server "error" event.
