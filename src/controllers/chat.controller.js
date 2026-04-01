@@ -4,8 +4,9 @@ import "../config/environment.js";
 import { getMediaType } from "../middlewares/chatMediaupload.js";
 export default class ChatController {
   static async uploadChatMedia(request) {
-    const { files, payload, headers, user, baseUrl } = request;
+    const { files, payload, headers, user  } = request;
     try {
+      const baseUrl = process.env.BASE_URL;
       const media = files.map((file) => ({
         url: `${baseUrl}/uploads/${file.destination.split(/[/\\]/).pop()}/${file.filename}`,
         originalName: file.originalname,

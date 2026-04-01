@@ -63,12 +63,12 @@ router.post("/upload-media", (req, res) => {
     if (!req.files?.length) {
       return res.status(400).json({ error: "No files uploaded" });
     }
-     const baseUrl = `${req.protocol}://${req.get("host")}`;
+     
     const response = await ChatController.uploadChatMedia({
       files: req.files,
       payload: { ...req.params, ...req.query, ...req.body },
       headers: req.headers,
-      baseUrl,
+    
       user: req.user,
     });
     res.return(response);
