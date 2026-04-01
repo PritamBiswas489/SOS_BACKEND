@@ -1,0 +1,31 @@
+import db from "../databases/models/index.js";
+import * as Sentry from "@sentry/node";
+import "../config/environment.js";
+import { getMediaType } from "../middlewares/chatMediaupload.js";
+export default class ChatController {
+  static async uploadChatMedia(request) {
+    const { files, payload, headers, user, baseUrl } = request;
+    try {
+      const media = files.map((file) => ({
+        url: `${baseUrl}/uploads/${file.destination.split(/[/\\]/).pop()}/${file.filename}`,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        mediaType: getMediaType(file.mimetype),
+        size: file.size,
+      }));
+      return {
+        status: 200,
+        data: media,
+        message: headers?.i18n.__("CHAT_MEDIA_UPLOAD_SUCCESSFUL"),
+        error: null,
+      };
+    } catch (err) {
+      return {
+        status: 500,
+        data: null,
+        message: headers?.i18n.__("CHAT_MEDIA_UPLOAD_FAILED"),
+        error: err.message,
+      };
+    }
+  }
+}

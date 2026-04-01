@@ -87,6 +87,16 @@ export default function User(sequelize, DataTypes) {
         type: DataTypes.INTEGER,
         allowNull: true,
         defaultValue: null,
+      },
+      is_online: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
+      last_seen: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null
       }
     },
     {

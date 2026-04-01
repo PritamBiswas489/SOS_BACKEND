@@ -77,4 +77,5 @@ export default class UserService {
       return callback(new Error("SAVE_DEVICE_TOKEN_FAILED"), null);
     }
   }
+   
 }

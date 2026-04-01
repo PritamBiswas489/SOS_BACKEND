@@ -1,7 +1,8 @@
 import db from "../databases/models/index.js";
 import "../config/environment.js";
 import * as Sentry from "@sentry/node";
-const { UserChats, UserChatMessageReceipts } = db;
+import moment from "moment";
+const { UserChats, UserChatMessageReceipts, User } = db;
 
 export default class ChatService {
   static async saveChatMessage(payload, callback) {
@@ -64,6 +65,47 @@ export default class ChatService {
       console.error("Error fetching message details:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       throw new Error("FETCH_MESSAGE_DETAILS_FAILED");
+    }
+  }
+  static async updateUserOnlineStatus(userId, isOnline) {
+    try {
+      await User.update(
+        { is_online: isOnline, last_seen:  moment().tz(process.env.timezone).format() },
+        { where: { id: userId } }
+      );
+    } catch (error) {
+      console.error("Error updating user online status:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+       
+    }
+  }
+  static async getChatHistory(roomId, limit = 50, before) {
+    try {
+      const whereClause = { room_id: roomId };
+      if (before) {
+        whereClause.created_at = { [db.Sequelize.Op.lt]: before };
+      }
+      const messages = await UserChats.findAll({
+        where: whereClause,
+        order: [["created_at", "DESC"]],
+        limit,
+      });
+      const formattedMessages =  messages.reverse().map((msg) => ({
+        id: msg.id,
+        senderId: msg.sender_id,
+        recipientId: msg.recipient_id,
+        text: msg.text,
+        mediaUrl: msg.media_url,
+        mediaType: msg.media_type,
+        replyTo: msg.reply_to,
+        status: msg.status,
+        timestamp: msg.created_at,
+      }));
+      return formattedMessages;
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      throw new Error("FETCH_CHAT_HISTORY_FAILED");
     }
   }
 }

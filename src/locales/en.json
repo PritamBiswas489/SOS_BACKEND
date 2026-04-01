@@ -482,11 +482,10 @@
 	"GET_TRUSTED_CONTACTS_SUCCESSFUL": "Get trusted contacts successful.",
 	"GET_PENDING_OUTGOING_INVITATIONS_FAILED": "Get pending outgoing invitations failed.",
 	"GET_PENDING_OUTGOING_INVITATIONS_SUCCESSFUL": "Get pending outgoing invitations successful.",
-    "GET_PENDING_INVITATIONS_FAILED": "Get pending invitations failed.",
-    "GET_TRUSTED_CONTACTS_FAILED": "Get trusted contacts failed.",
-    "ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED": "Only pending invitations can be canceled.",
-	"DELETE_INVITATION_FAILED": "Failed to delete invitation."
-	 
-	
-	
+	"GET_PENDING_INVITATIONS_FAILED": "Get pending invitations failed.",
+	"GET_TRUSTED_CONTACTS_FAILED": "Get trusted contacts failed.",
+	"ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED": "Only pending invitations can be canceled.",
+	"DELETE_INVITATION_FAILED": "Failed to delete invitation.",
+	"CHAT_MEDIA_UPLOAD_FAILED": "Failed to upload chat media.",
+	"CHAT_MEDIA_UPLOAD_SUCCESSFUL": "Chat media uploaded successfully."
 }

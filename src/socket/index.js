@@ -9,6 +9,7 @@ import { registerStatusHandlers } from "./statusHandler.js";
 import { registerPresenceHandlers } from "./presenceHandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
+import ChatService from "../services/chat.service.js";
 let io;
 const connectedUsers = new Map();
 
@@ -101,6 +102,10 @@ export const initSocketServer = async (httpServer) => {
       const clients = await io.in(roomId).allSockets();
       console.log(`Sockets in room ${roomId}:`, clients);
     });
+
+
+    await ChatService.updateUserOnlineStatus(socket.userId, true);
+
     //Register chat-related event handlers
     registerChatHandlers(io, socket);
     //Register typing-related event handlers
@@ -120,13 +125,7 @@ export const initSocketServer = async (httpServer) => {
         sockets.delete(socket.id);
         if (sockets.size === 0) {
           connectedUsers.delete(userId);
-          // Update DB presence
-          // try {
-          //   const { User } = await import('../models/index.js');
-          //   await User.update({ isOnline: false, lastSeen: new Date() }, { where: { id: userId } });
-          // } catch (err) {
-          //   console.error('[Socket] Failed to update offline status', err);
-          // }
+            await ChatService.updateUserOnlineStatus(socket.userId, false);
 
           // Only broadcast offline when ALL devices disconnect
           io.emit('user:offline', { userId, lastSeen: new Date().toISOString() });
