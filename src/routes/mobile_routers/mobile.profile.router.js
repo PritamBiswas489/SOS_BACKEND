@@ -64,4 +64,28 @@ router.post("/save-device-token", async (req, res) => {
       res.return(response);
 });
 
+
+/**
+ * @swagger
+ * /api-mobile/auth/user/profile/delete-device-token:
+ *   post:
+ *     summary: Delete device token for push notifications
+ *     tags:
+ *       - User authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Device token deleted successfully
+ */
+router.post("/delete-device-token", async (req, res) => {
+    const response = await ProfileController.deleteDeviceToken({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+});
+
 export default router;

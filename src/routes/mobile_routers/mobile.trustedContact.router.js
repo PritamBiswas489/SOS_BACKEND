@@ -32,6 +32,14 @@ const router = express.Router();
  *                 type: string
  *                 description: Relationship with the trusted contact
  *                 example: "friend"
+ *               sos_alert:
+ *                 type: boolean
+ *                 description: Allow this contact to receive SOS alerts
+ *                 example: true
+ *               share_location:
+ *                 type: boolean
+ *                 description: Allow this contact to see your location
+ *                 example: true
  *     responses:
  *       200:
  *         description: Invitation sent successfully

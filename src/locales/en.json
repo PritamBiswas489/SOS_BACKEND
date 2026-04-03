@@ -487,5 +487,7 @@
 	"ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED": "Only pending invitations can be canceled.",
 	"DELETE_INVITATION_FAILED": "Failed to delete invitation.",
 	"CHAT_MEDIA_UPLOAD_FAILED": "Failed to upload chat media.",
-	"CHAT_MEDIA_UPLOAD_SUCCESSFUL": "Chat media uploaded successfully."
+	"CHAT_MEDIA_UPLOAD_SUCCESSFUL": "Chat media uploaded successfully.",
+	"TRUSTED_CONTACT_LIMIT_REACHED": "Trusted contact limit reached. You can only have up to 10 trusted contacts.",
+	"DELETE_DEVICE_TOKEN_SUCCESSFUL": "DELETE_DEVICE_TOKEN_SUCCESSFUL"
 }

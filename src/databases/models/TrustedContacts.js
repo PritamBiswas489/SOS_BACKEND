@@ -50,6 +50,16 @@ export default function TrustedContacts(sequelize, DataTypes) {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      sos_alert: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+      share_location: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       tableName: "trusted_contacts",

@@ -77,5 +77,16 @@ export default class UserService {
       return callback(new Error("SAVE_DEVICE_TOKEN_FAILED"), null);
     }
   }
+  static async deleteDeviceToken({ userId, payload, headers }, callback) {
+    try {
+      console.log("Deleting device token for user ID:", userId);
+      await Devices.destroy({ where: { user_id: userId } });
+      return callback(null, { message: "Device token deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting device token:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("DELETE_DEVICE_TOKEN_FAILED"), null);
+    }
+  }
    
 }

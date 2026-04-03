@@ -12,7 +12,19 @@ export default class TrustedContactService {
     console.log("Sending trusted contact invitation for user ID:", userid);
     console.log("Payload:", payload);
     try {
-      const { name, mobile_number, relationship } = payload;
+
+    //check 10 trusted contacts limit
+    const trustedContactCount = await TrustedContacts.count({
+      where: {
+        user_id: userid,
+        status: "accepted",
+      },
+    });
+    if (trustedContactCount >= 10) {
+      return callback(new Error("TRUSTED_CONTACT_LIMIT_REACHED"), null);
+    }
+
+      const { name, mobile_number, relationship, sos_alert, share_location } = payload;
       const getUser = await User.findOne({
         where: { phone_number: mobile_number, role: "USER", is_active: true },
       });
@@ -44,6 +56,8 @@ export default class TrustedContactService {
         trusted_user_id: getUser.id,
         nickname: name,
         relationship: relationship,
+        sos_alert: sos_alert,
+        share_location: share_location,
       });
       console.log(
         "Trusted contact invitation sent successfully:",
@@ -71,6 +85,22 @@ export default class TrustedContactService {
             id: invitationId,
             trusted_user_id: userid,
           },
+          include: [
+            {
+              model: User,
+              as: "inviter",
+              where: { is_active: true },
+              attributes: ["id", "name", "phone_number"],
+              required: true,
+            },
+            {
+              model: User,
+              as: "trusted_contact",
+              where: { is_active: true },
+              attributes: ["id", "name", "phone_number"],
+              required: true,
+            }
+          ],
         },
         { 
             lock: transaction.LOCK.UPDATE,
@@ -78,24 +108,39 @@ export default class TrustedContactService {
         },
       );
       if (!invitation) {
-        await transaction.rollback();
-        return callback(new Error("INVITATION_NOT_FOUND"), null);
+         await transaction.rollback();
+         return callback(new Error("INVITATION_NOT_FOUND"), null);
       }
       invitation.status = "accepted";
       await invitation.save({ transaction });
 
-      await TrustedContacts.create(
-        {
+
+      const existingContacts = await TrustedContacts.findAll({
+        where: {
           user_id: invitation.trusted_user_id,
-          trusted_user_id: invitation.user_id,
-          nickname: invitation.nickname,
-          relationship: invitation.relationship,
           status: "accepted",
         },
-        {
-          transaction,
-        },
-      );
+        attributes: ["id"],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      const trustedContactCount = existingContacts.length;
+
+      if (trustedContactCount < 10) {
+        await TrustedContacts.create(
+          {
+            user_id: invitation.trusted_user_id,
+            trusted_user_id: invitation.user_id,
+            nickname: invitation.inviter.name,
+            relationship: invitation.relationship,
+            status: "accepted",
+          },
+          {
+            transaction,
+          },
+        );
+      }
+
       await transaction.commit();
       return callback(null, { data: invitation });
     } catch (error) {
@@ -292,6 +337,21 @@ export default class TrustedContactService {
       console.error("Error deleting trusted contact:", error);
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
+    }
+  }
+  static async countTrustedContacts({ userid, payload, headers }, callback) {
+    try {
+      const count = await TrustedContacts.count({
+        where: {
+          user_id: userid,
+          status: "accepted",
+        },
+      });
+      return callback(null, { data: count });
+    } catch (error) {
+      console.error("Error counting trusted contacts:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("COUNT_TRUSTED_CONTACTS_FAILED"), null);
     }
   }
 
