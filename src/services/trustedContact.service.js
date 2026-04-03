@@ -293,23 +293,30 @@ export default class TrustedContactService {
     { userid, payload, headers },
     callback,
   ) {
+    const transaction = await db.sequelize.transaction();
     try {
       const { id: invitationId } = payload;
       const invitation = await TrustedContacts.findOne({
         where: {
           id: invitationId,
         },
+      },{
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!invitation) {
+        await transaction.rollback();
         return callback(new Error("INVITATION_NOT_FOUND"), null);
       }
       if (
         invitation.user_id !== userid &&
         invitation.trusted_user_id !== userid
       ) {
+        await transaction.rollback(); 
         return callback(new Error("UNAUTHORIZED_ACTION"), null);
       }
       if (invitation.status === "accepted") {
+
         await TrustedContacts.destroy({
           where: {
             [Op.or]: [
@@ -323,17 +330,22 @@ export default class TrustedContactService {
               },
             ],
           },
+        },{
+          transaction,
         });
+         await transaction.commit();
         return callback(null, {
           data: "Successfully deleted trusted contact",
         });
       }
       
       await invitation.destroy();
+      await transaction.commit();
       return callback(null, {
         data: "Successfully deleted trusted contact invitation",
       });
     } catch (error) {
+        await transaction.rollback();
       console.error("Error deleting trusted contact:", error);
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
