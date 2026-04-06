@@ -87,6 +87,8 @@ app.use(
       "http://localhost:3000", // local
       "https://back-sos.pritamaqua.aqualeafitsol.com", // production
       "https://web-sos.pritamaqua.aqualeafitsol.com",
+      "https://sosappproject.com",
+      "https://www.sosappproject.com",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

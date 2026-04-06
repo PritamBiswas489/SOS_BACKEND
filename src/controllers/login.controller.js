@@ -152,6 +152,7 @@ export default class LoginController {
          jwtPayload = {
           id: user.id,
           phoneNumber: user.phone_number,
+          name: user.name,
           email: user.email,
           role: user.role,
         };
@@ -160,6 +161,7 @@ export default class LoginController {
          jwtPayload = {
           id: newUser.id,
           phoneNumber: newUser.phone_number,
+          name: newUser.name,
           email: newUser.email,
           role: newUser.role,
         };

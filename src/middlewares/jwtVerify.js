@@ -63,12 +63,10 @@ export default async (req, res, next) => {
 
 				const payload = {
 					id: data.id,
+					phoneNumber: data.phone_number,
+					name: data.name,
 					email: data.email,
 					role: data.role,
-					avatar: data.avatar,
-					name: data.name,
-					userName: data.userName,
-					// theme: data.theme,
 				};
 
 				const getUserById = await UserService.getUserById(data.id);

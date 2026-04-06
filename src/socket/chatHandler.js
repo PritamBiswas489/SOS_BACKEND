@@ -41,6 +41,7 @@ export const registerChatHandlers = (io, socket) => {
       // Create message object
       const message = {
         id: dbMessage.id, // Use the generated unique ID
+        roomId: dbMessage.room_id,
         senderId: socket.userId,
         senderName: socket.userName,
         recipientId: dbMessage.recipient_id,
