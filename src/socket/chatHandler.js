@@ -13,14 +13,17 @@ export const registerChatHandlers = (io, socket) => {
         mediaUrl = null,
         mediaType = null,
         replyTo = null,
+        locationJson = null,
       } = payload;
 
+      console.log("Received message:send with payload:", payload);
+
       // Basic validation
-      if (!recipientId || (!text && !mediaUrl)) {
+      if (!recipientId || (!text && !mediaUrl && !locationJson)) {
         if (typeof ack === "function") {
           return ack({
             success: false,
-            error: "recipientId and text or mediaUrl required",
+            error: "recipientId and at least one of text, mediaUrl, or current location is required",
           });
         }
         return;
@@ -35,6 +38,7 @@ export const registerChatHandlers = (io, socket) => {
           media_url: mediaUrl,
           media_type: mediaType,
           reply_to: replyTo,
+          location_json: locationJson,
         },
       );
 
@@ -51,6 +55,7 @@ export const registerChatHandlers = (io, socket) => {
         replyTo: dbMessage.reply_to,
         status: dbMessage.status,
         timestamp: moment().toISOString(),
+        locationJson: dbMessage.location_json,
       };
 
       const clients = await io.in(roomId).allSockets();
@@ -94,8 +99,8 @@ export const registerChatHandlers = (io, socket) => {
   });
   socket.on("message:history", async (payload, ack) => {
     try {
-      const { roomId, limit = 50, before } = JSON.parse(payload);
-      const messages = await ChatService.getChatHistory(roomId, limit, before);
+      const { roomId, limit = 50, page = 1 } = JSON.parse(payload);
+      const messages = await ChatService.getChatHistory(roomId, limit, page);
       if (typeof ack === "function") {
         ack({ success: true, messages });
       }

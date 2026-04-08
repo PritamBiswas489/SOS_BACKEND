@@ -54,7 +54,7 @@ export default class TrustedContactController {
             });
           }
 
-          return resolve({
+          return resolve({ 
             status: 200,
             data: response.data,
             message: headers?.i18n.__("ACCEPT_INVITATION_SUCCESSFUL"),
@@ -237,6 +237,37 @@ export default class TrustedContactController {
             data: response.data,
             message: headers?.i18n.__(
               "GET_TRUSTED_CONTACTS_DEVICES_TOKENS_SUCCESSFUL",
+            ),
+            error: null,
+          });
+        },
+      );
+    });
+  }
+  static async chatContactFriendList(request) {
+    const { payload, headers, user } = request;
+    const userid = user?.id;
+    return new Promise((resolve) => {
+      TrustedContactService.chatContactFriendList(
+        { userid, payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "GET_CHAT_CONTACT_FRIEND_LIST_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__(
+              "GET_CHAT_CONTACT_FRIEND_LIST_SUCCESSFUL",
             ),
             error: null,
           });

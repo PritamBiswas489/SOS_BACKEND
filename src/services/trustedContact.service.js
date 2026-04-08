@@ -71,6 +71,43 @@ export default class TrustedContactService {
       return callback(new Error("SEND_INVITATION_FAILED"), null);
     }
   }
+  //chat contact friend list
+  static async chatContactFriendList({ userid }, callback) {
+    try {
+      const friends = await TrustedContacts.findAll({
+        where: {
+          status: "accepted",
+          [Op.or]: [
+            { user_id: userid },
+            { trusted_user_id: userid }
+          ]       
+        },
+        include: [
+          {
+            model: User,
+            as: "trusted_contact",
+            where: { is_active: true },
+            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
+            required: true,
+          },
+          {
+            model: User,
+            as: "inviter",
+            where: { is_active: true },
+            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
+            required: true,
+          },
+        ],
+      });
+      return callback(null, { data: friends });
+    }catch (error) {
+      console.error("Error fetching chat contact friend list:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_CHAT_CONTACT_FRIEND_LIST_FAILED"), null);
+    }
+    
+      
+  }
   //accept trusted contact invitation
   static async acceptTrustedContactInvitation(
     { userid, payload, headers },
@@ -243,7 +280,7 @@ export default class TrustedContactService {
                 attributes: ["id", "device_token", "device_type"],
               },
             ],
-            attributes: ["id", "name", "phone_number", "profile_photo"],
+            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
             required: true,
           },
         ],

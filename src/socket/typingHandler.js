@@ -14,19 +14,21 @@ export const registerTypingHandlers = (io, socket) => {
   socket.on('typing:start', (payload) => {
     console.log('Received typing:start event with payload:', payload);
     
-    const { recipientId, roomId } = JSON.parse(payload);
+    const {  roomId } = JSON.parse(payload);
     const typingData = {
       userId: socket.userId,
       userName: socket.userName,
+      roomId,
     };
     io.to(`${roomId}`).emit('typing:start', { ...typingData, chatWith: socket.userId });
   });
 
   socket.on('typing:stop', (payload) => {
-    const { recipientId, roomId } = JSON.parse(payload);
+    const {  roomId } = JSON.parse(payload);
     const typingData = {
       userId: socket.userId,
       userName: socket.userName,
+      roomId,
     };
     io.to(`${roomId}`).emit('typing:stop', { ...typingData, chatWith: socket.userId });
   });

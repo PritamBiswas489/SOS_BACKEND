@@ -45,6 +45,11 @@ export default function UserChats(sequelize, DataTypes) {
         type: DataTypes.JSON,
         allowNull: true,
       },
+      location_json:{
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: {},
+      },
       reply_to: {
         type: DataTypes.BIGINT,
         allowNull: true,

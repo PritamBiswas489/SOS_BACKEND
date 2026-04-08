@@ -15,6 +15,7 @@ export default class ChatService {
         media_type,
         reply_to,
         room_id,
+        location_json
       } = payload;
       const newMessage = await UserChats.create({
         sender_id,
@@ -24,6 +25,8 @@ export default class ChatService {
         media_type,
         reply_to,
         room_id,
+        location_json
+
       });
       return callback(null, newMessage);
     } catch (error) {
@@ -36,7 +39,7 @@ export default class ChatService {
     try {
       await UserChats.update(
         { status },
-        { where: { id: messageId, status: "sent" } }
+        { where: { id: messageId, status: { [db.Sequelize.Op.ne]: status } } }
       );
     } catch (error) {
       console.error("Error updating message status:", error);
@@ -79,16 +82,15 @@ export default class ChatService {
        
     }
   }
-  static async getChatHistory(roomId, limit = 50, before) {
+  static async getChatHistory(roomId, limit = 50, page = 1) {
     try {
       const whereClause = { room_id: roomId };
-      if (before) {
-        whereClause.created_at = { [db.Sequelize.Op.lt]: before };
-      }
+      const offset = (page - 1) * limit;
       const messages = await UserChats.findAll({
         where: whereClause,
         order: [["created_at", "DESC"]],
         limit,
+        offset
       });
       const formattedMessages =  messages.reverse().map((msg) => ({
         id: msg.id,
@@ -100,6 +102,7 @@ export default class ChatService {
         replyTo: msg.reply_to,
         status: msg.status,
         timestamp: msg.created_at,
+        locationJson: msg.location_json,
       }));
       return formattedMessages;
     } catch (error) {

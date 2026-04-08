@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Ensure upload directories exist
 const ensureDir = (dir) => {
@@ -56,8 +55,7 @@ export const uploadChatMedia = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: MAX_FILE_SIZE,
-    files: 5, // max 5 files per request
+    files: 1, // max 1 file per request
   },
 });
 /**

@@ -24,12 +24,10 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               files:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Media files to upload (image, video, audio, document). Max 5 files.
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Media file to upload (image, video, audio, document).
  *     responses:
  *       200:
  *         description: Media uploaded successfully
@@ -56,16 +54,16 @@ const router = express.Router();
  *         description: Unauthorized
  */
 router.post("/upload-media", (req, res) => {
-  uploadChatMedia.array("files", 5)(req, res, async function (err) {
+  uploadChatMedia.single("file")(req, res, async function (err) {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
-    if (!req.files?.length) {
-      return res.status(400).json({ error: "No files uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
      
     const response = await ChatController.uploadChatMedia({
-      files: req.files,
+      file: req.file,
       payload: { ...req.params, ...req.query, ...req.body },
       headers: req.headers,
     

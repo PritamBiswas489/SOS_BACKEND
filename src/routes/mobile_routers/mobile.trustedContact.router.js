@@ -276,4 +276,27 @@ router.get("/get-trusted-contact-devices-tokens", async (req, res) => {
       });
       res.return(response);
 });
+
+/**
+ * @swagger
+ * /api-mobile/auth/trusted-contact/chat-contact-friend-list:
+ *   get:
+ *     summary: Get trusted contacts available for chat friend list
+ *     tags:
+ *       - Add trusted contact routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Chat contact friend list fetched successfully
+ */
+router.get("/chat-contact-friend-list", async (req, res) => {
+  const response = await TrustedContactController.chatContactFriendList({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
 export default router;
