@@ -89,6 +89,13 @@ export default class ChatService {
       const messages = await UserChats.findAll({
         where: whereClause,
         order: [["created_at", "DESC"]],
+        include:[
+          {
+            model: UserChats,
+            as: "reply_to_message",
+            required: false,
+          }
+        ],
         limit,
         offset
       });
@@ -103,6 +110,7 @@ export default class ChatService {
         status: msg.status,
         timestamp: msg.created_at,
         locationJson: msg.location_json,
+        reply_to_message: msg.reply_to_message || null
       }));
       return formattedMessages;
     } catch (error) {

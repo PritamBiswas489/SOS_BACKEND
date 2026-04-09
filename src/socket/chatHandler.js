@@ -41,6 +41,10 @@ export const registerChatHandlers = (io, socket) => {
           location_json: locationJson,
         },
       );
+      let replyToMessage = null;
+      if(replyTo){  
+          replyToMessage = await ChatService.getMessageDetails(replyTo);
+      }
 
       // Create message object
       const message = {
@@ -53,6 +57,7 @@ export const registerChatHandlers = (io, socket) => {
         mediaUrl: dbMessage.media_url,
         mediaType: dbMessage.media_type,
         replyTo: dbMessage.reply_to,
+        reply_to_message: replyToMessage,
         status: dbMessage.status,
         timestamp: moment().toISOString(),
         locationJson: dbMessage.location_json,

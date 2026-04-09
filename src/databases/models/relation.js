@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts  } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats  } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -73,6 +73,21 @@ const relation = (db) => {
     foreignKey: "trusted_user_id",
     as: "trusted_contact",
   });
+
+  UserChats.belongsTo(UserChats, {
+    foreignKey: "reply_to",
+    as: "reply_to_message",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  UserChats.hasMany(UserChats, {
+    foreignKey: "reply_to",
+    as: "replies",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+
+  
 
 };
 
