@@ -1,3 +1,4 @@
+import f from "session-file-store";
 import admin from "../config/firebaseAdmin.js";
 import UserService from "./user.service.js";
 
@@ -45,10 +46,11 @@ export default class PushNotificationService {
     }
   }
   static async sendNotificationByFcmToken(
-    { fcmToken, title, body, data },
+    { fcmToken, title, body, data = {} },
     callback
   ) {
     try {
+
       const message = {
         notification: {
           title: title,

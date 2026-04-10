@@ -3,6 +3,7 @@ const { ContactUs, Op } = db;
 
 import { addContactValidator } from "../validators/contact.validator.js";
 import * as Sentry from "@sentry/node";
+import logger from "../config/winston.js";
 
 export default class ContactUsController { 
   
@@ -37,6 +38,7 @@ export default class ContactUsController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In saveContent", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,
@@ -64,6 +66,7 @@ export default class ContactUsController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In listAll", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,

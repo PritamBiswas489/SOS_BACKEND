@@ -5,6 +5,7 @@ import { dirname, join, basename as _basename } from 'path';
 import chalk from 'chalk';
 import { Sequelize, DataTypes, Op, col, fn } from 'sequelize';
 import relation from './relation.js';
+import logger from '../../config/winston.js';
 
 const { database, password, username, options } = dbConfig;
 
@@ -20,6 +21,7 @@ const baseFilename = _basename(fileURLToPath(import.meta.url));
 		await sequelize.authenticate();
 		console.log(`${chalk.green('CONNECTED')} : Database Successfully Connected`);
 	} catch (error) {
+		logger.error("ERROR In Database Connection", { error: error });
 		console.error(`${chalk.red('CONNECTION ERROR')} : `, error.message);
 	}
 })();

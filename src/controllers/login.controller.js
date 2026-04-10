@@ -11,6 +11,8 @@ import { setNewPinValidator } from "../validators/setNewPin.validator.js";
 import redisClient from "../config/redis.config.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import OtpVerificationService from "../services/otpVerification.service.js";
+import logger from "../config/winston.js";
+ 
 
 const { User, UserDevices, Op } = db;
 
@@ -80,6 +82,7 @@ export default class LoginController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In sendOtpToMobileNumber", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,
@@ -117,6 +120,7 @@ export default class LoginController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In verifyOtp", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,
@@ -187,6 +191,7 @@ export default class LoginController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In createUserAfterOtpVerification", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,
@@ -495,6 +500,7 @@ export default class LoginController {
         error: {},
       };
     } catch (e) {
+      logger.error("ERROR In createOrVerifyPinByPhoneNumber", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {
         status: 500,

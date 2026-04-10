@@ -3,6 +3,7 @@ import "../config/environment.js";
 import * as Sentry from "@sentry/node";
 import Joi from "joi";
 import path from "path";
+import logger from "../config/winston.js";
 const {UserKycDocuments, User} = db;
  
 const kycDocumentSchema = Joi.object({
@@ -76,6 +77,7 @@ export default class KycService {
                 return callback(null, { data: updatedKycDocument });
             } catch (error) {
                 console.error("Error updating KYC document:", error);
+                logger.error("ERROR In submitKycDocuments - update", { error: error });
                 process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
                 return callback(new Error('UPDATE_ERROR'), null);
             }
@@ -96,6 +98,7 @@ export default class KycService {
             return callback(null, { data: newKycDocument });
         } catch (error) {
             console.error("Error inserting KYC document:", error);
+            logger.error("ERROR In submitKycDocuments - insert", { error: error });
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
             return callback(new Error('INSERT_ERROR'), null);
         }
@@ -111,6 +114,7 @@ export default class KycService {
             return callback(null, { data: { ...kycDocument.toJSON(), documentUrl: process.env.BASE_URL + '/uploads/kyc/' + documentFilename } });
         } catch (error) {
             console.error("Error fetching KYC document:", error);
+            logger.error("ERROR In getKycDocuments", { error: error });
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
             return callback(new Error('FETCH_ERROR'), null);
         }
@@ -134,6 +138,7 @@ export default class KycService {
             return callback(null, { data: updatedKycDocument });
         }catch (error) {
             console.error("Error changing KYC document status:", error);
+            logger.error("ERROR In changeStatus", { error: error });
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
             return callback(new Error('STATUS_CHANGE_ERROR'), null);
         }

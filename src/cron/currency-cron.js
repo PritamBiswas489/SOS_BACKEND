@@ -2,6 +2,8 @@ import CurrencyService from "../services/currency.service.js";
 import "../config/environment.js";
 // cronJob.js
 import cron from 'node-cron';
+import logger from "../config/winston.js";
+import { log } from "handlebars";
 
 // Your scheduled task
 const updateCurrencyRates = async () => {
@@ -10,6 +12,7 @@ const updateCurrencyRates = async () => {
         await CurrencyService.insertOrUpdateCurrency();
         console.log('Currency rates updated successfully');
     } catch (error) {
+        logger.error("ERROR In updateCurrencyRates", { error: error });
         console.error('Error updating currency rates:', error);
     }
 };

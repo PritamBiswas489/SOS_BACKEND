@@ -2,7 +2,9 @@ import "../config/environment.js";
 import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
+import logger from "../config/winston.js";
 import moment from "moment-timezone";
+ 
 
 const { Op, User, Licenses, Devices } = db;
 
@@ -16,6 +18,7 @@ export default class UserService {
       return user;
     } catch (error) {
       console.error("Error fetching user by ID:", error);
+      logger.error("ERROR In getUserById", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       throw error;
     }
@@ -51,6 +54,23 @@ export default class UserService {
       return callback(null, user);
     } catch (error) {
       console.error("Error fetching user profile:", error);
+      logger.error("ERROR In getAppUserProfile", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(error, null);
+    }
+  }
+  static async getUserDeviceTokens(userId, callback) {
+    try {
+      const devices = await Devices.findAll({
+        where: { user_id: userId },
+        attributes: ["device_token", "device_type"],
+      });
+      const deviceTokens = devices.map((device) => device.device_token);
+      return callback(null, deviceTokens);
+    }
+      catch (error) {
+      console.error("Error fetching user device tokens:", error);
+      logger.error("ERROR In getUserDeviceTokens", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(error, null);
     }
@@ -74,6 +94,7 @@ export default class UserService {
     } catch (error) {
       console.error("Error saving device token:", error);
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      logger.error("ERROR In saveDeviceToken", { error: error });
       return callback(new Error("SAVE_DEVICE_TOKEN_FAILED"), null);
     }
   }
@@ -85,6 +106,7 @@ export default class UserService {
     } catch (error) {
       console.error("Error deleting device token:", error);
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      logger.error("ERROR In deleteDeviceToken", { error: error });
       return callback(new Error("DELETE_DEVICE_TOKEN_FAILED"), null);
     }
   }

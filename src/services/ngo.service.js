@@ -8,6 +8,7 @@ import KycService from "./kyc.service.js";
 import UserService from "./user.service.js";
 import path from "path";
 import { promisify } from "../libraries/utility.js";
+import logger from "../config/winston.js";
  
 
 export default class NgoService {
@@ -44,6 +45,7 @@ export default class NgoService {
       });
     } catch (error) {
       console.error("Error in registerNgo:", error);
+      logger.error("ERROR In registerNgo", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("REGISTER_NGO_FAILED"));
     }
@@ -102,6 +104,7 @@ export default class NgoService {
       });
     } catch (error) {
       console.error("Error in ngoLogin:", error);
+      logger.error("ERROR In ngoLogin", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("NGO_LOGIN_FAILED"));
     }
@@ -231,7 +234,7 @@ export default class NgoService {
         data: { user: createUser, kycDocument: kycResult?.data, license },
       });
     } catch (error) {
-      console.error("Error in registerUserForNgo:", error);
+      logger.error("ERROR In registerUserForNgo", { error: error });
       if (process.env.NODE_ENV === "production") Sentry.captureException(error);
       // Guard against double-rollback if already committed
       if (transaction && !transaction.finished) {
@@ -295,6 +298,7 @@ export default class NgoService {
       });
     } catch (error) {
       console.error("Error in listUsersForNgo:", error);
+      logger.error("ERROR In listUsersForNgo", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("LIST_USERS_FOR_NGO_FAILED"));
     }

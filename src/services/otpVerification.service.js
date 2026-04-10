@@ -1,6 +1,7 @@
 import db from "../databases/models/index.js";
 import "../config/environment.js";
 import { generateOtp } from "../libraries/utility.js";
+import logger from "../config/winston.js";
 const { OtpVerifications } = db;
 
 export default class OtpVerificationService {

@@ -1,6 +1,7 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
+import logger from "../config/winston.js";
 const {  Op, User, ApiLogs  } = db;
 
 export default class TrackIpAddressDeviceIdService {
@@ -12,6 +13,7 @@ export default class TrackIpAddressDeviceIdService {
 
         } catch (e) {
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+            logger.error("ERROR In createTrackIpAddressDeviceId", { error: e });
             console.error("Error creating track IP address and device ID:", e.message);
         }
     }
@@ -25,6 +27,7 @@ export default class TrackIpAddressDeviceIdService {
            return { SUCCESS: 1, data: tracks };
         } catch (e) {
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+            logger.error("ERROR In getTrackByIpAddress", { error: e });
             console.error("Error fetching tracks by IP address:", e.message);
         }
     }
@@ -55,6 +58,7 @@ export default class TrackIpAddressDeviceIdService {
             };
         } catch (e) {
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+            logger.error("ERROR In getApiEndpointLogs", { error: e });
             console.error("Error fetching API endpoint logs:", e.message);
             return { ERROR: e.message };
         }

@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 // Use production key if available, fallback to development
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
   ? process.env.FIREBASE_SERVICE_ACCOUNT_PATH
-  : join(__dirname, '../../firebase/testingfcm123-f729f-firebase-adminsdk-fbsvc-68015db106.json');
+  : join(__dirname, '../../firebase/firebase.json');
 // console.log(serviceAccountPath)
 
 // Read and parse the key

@@ -1,3 +1,4 @@
+import { log } from 'handlebars';
 import { chromium } from 'playwright';
 
 export async function getExchangeRate(currency = "THB", amount = "10000") {
@@ -46,6 +47,7 @@ export async function getExchangeRate(currency = "THB", amount = "10000") {
       return { error: "Exchange rate not found", raw_text: resultText };
     }
   } catch (err) {
+    logger.error("ERROR In getExchangeRate", { error: err });
     await browser.close();
     return { error: err.message };
   }

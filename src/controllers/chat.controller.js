@@ -2,6 +2,8 @@ import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import "../config/environment.js";
 import { getMediaType } from "../middlewares/chatMediaupload.js";
+import logger from "../config/winston.js";
+ 
 export default class ChatController {
   static async uploadChatMedia(request) {
     const { file, payload, headers, user  } = request;
@@ -21,6 +23,7 @@ export default class ChatController {
         error: null,
       };
     } catch (err) {
+      logger.error("ERROR In uploadChatMedia", { error: err });
       return {
         status: 500,
         data: null,

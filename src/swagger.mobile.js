@@ -26,6 +26,10 @@ const options = {
           name: "Chat with trusted contact routes",
           description: "Endpoints for managing chat with trusted contacts",
       },
+       {
+          name: "Push notification services routes",
+          description: "Endpoints for managing push notifications",
+      },
       {
         name: "Redis testing routes",
         description: "Endpoints for Redis cache management",

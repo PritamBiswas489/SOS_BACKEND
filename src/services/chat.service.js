@@ -3,6 +3,8 @@ import "../config/environment.js";
 import * as Sentry from "@sentry/node";
 import moment from "moment";
 const { UserChats, UserChatMessageReceipts, User } = db;
+import logger from "../config/winston.js";
+ 
 
 export default class ChatService {
   static async saveChatMessage(payload, callback) {
@@ -30,6 +32,7 @@ export default class ChatService {
       });
       return callback(null, newMessage);
     } catch (error) {
+      logger.error("ERROR In saveChatMessage", { error: error });
       console.error("Error saving chat message:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("SAVE_CHAT_MESSAGE_FAILED"));
@@ -42,6 +45,7 @@ export default class ChatService {
         { where: { id: messageId, status: { [db.Sequelize.Op.ne]: status } } }
       );
     } catch (error) {
+      logger.error("ERROR In updateMessageStatus", { error: error });
       console.error("Error updating message status:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       throw new Error("UPDATE_MESSAGE_STATUS_FAILED");
@@ -55,6 +59,7 @@ export default class ChatService {
         status
       });
     } catch (error) {
+      logger.error("ERROR In saveMessageReceipt", { error: error });
       console.error("Error saving message receipt:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       throw new Error("SAVE_MESSAGE_RECEIPT_FAILED");
@@ -65,6 +70,7 @@ export default class ChatService {
       const message = await UserChats.findOne({ where: { id: messageId } });
       return message;
     } catch (error) {
+      logger.error("ERROR In getMessageDetails", { error: error });
       console.error("Error fetching message details:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       throw new Error("FETCH_MESSAGE_DETAILS_FAILED");
@@ -77,6 +83,7 @@ export default class ChatService {
         { where: { id: userId } }
       );
     } catch (error) {
+      logger.error("ERROR In updateUserOnlineStatus", { error: error });
       console.error("Error updating user online status:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
        
@@ -114,6 +121,7 @@ export default class ChatService {
       }));
       return formattedMessages;
     } catch (error) {
+      logger.error("ERROR In getChatHistory", { error: error });
       console.error("Error fetching chat history:", error);
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       throw new Error("FETCH_CHAT_HISTORY_FAILED");

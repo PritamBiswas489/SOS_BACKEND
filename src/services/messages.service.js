@@ -1,6 +1,7 @@
 import "../config/environment.js";
 import axios from "axios";
 import twilio from "twilio";
+import logger from "../config/winston.js";
 
 /**
  * Service to send OTP via WhatsApp using Respond.io API
@@ -23,6 +24,7 @@ export const otpWhatsappService = async (number, otp_code) => {
             console.log(`Number exists: ${number}`);
         } catch (err) {
             console.log(`Creating number: ${number}`);
+            logger.warn(`Number ${number} not found, attempting to create it.`);
             await new Promise((resolve) => setTimeout(resolve, 5000));
             // Step 2: Create number if not found
             const createUrl = `https://api.respond.io/v2/contact/create_or_update/phone:+${number}`;

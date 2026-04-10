@@ -2,6 +2,9 @@ import moment from "moment";
 import { getSocketIdsForUser } from "./index.js";
 import ChatService from "../services/chat.service.js";
 import { promisify } from "../libraries/utility.js";
+import PushNotificationService from "../services/pushNotification.service.js";
+import UserService from "../services/user.service.js";
+import TrustedContactService from "../services/trustedContact.service.js";
 export const registerChatHandlers = (io, socket) => {
   socket.on("message:send", async (load, ack) => {
     try {
@@ -45,13 +48,21 @@ export const registerChatHandlers = (io, socket) => {
       if(replyTo){  
           replyToMessage = await ChatService.getMessageDetails(replyTo);
       }
-
+      const trustedContact = await promisify(
+        TrustedContactService.getTrustedContactDetailsByUserIdAndTrustedContactId.bind(TrustedContactService),
+        { userid: dbMessage.recipient_id, payload: { trustedContactId: socket.userId }, headers: {} },
+      );
+      console.log("Trusted contact details:", trustedContact);
+      let senderName = socket.userName;
+      if(trustedContact?.data?.nickname){
+        senderName = trustedContact.data.nickname;
+      }
       // Create message object
       const message = {
         id: dbMessage.id, // Use the generated unique ID
         roomId: dbMessage.room_id,
         senderId: socket.userId,
-        senderName: socket.userName,
+        senderName: senderName,
         recipientId: dbMessage.recipient_id,
         text: dbMessage.text,
         mediaUrl: dbMessage.media_url,
@@ -91,6 +102,28 @@ export const registerChatHandlers = (io, socket) => {
         });
       } else {
         //Push notification logic can be implemented here for offline users
+        const recipientDeviceTokens = await promisify(
+          UserService.getUserDeviceTokens.bind(UserService),
+          recipientId,
+        );
+        if(recipientDeviceTokens && recipientDeviceTokens.length > 0){
+          const notificationTitle = `New message from ${senderName}`;
+          const notificationBody = text ? text : "Sent you a new message";
+          for(const token of recipientDeviceTokens){
+            await promisify(
+              PushNotificationService.sendNotificationByFcmToken.bind(PushNotificationService),
+              {
+                fcmToken: token,
+                title: notificationTitle,
+                body: notificationBody,
+                data: {
+                   messageType:'CHAT_MESSAGE',
+                }
+              },
+            );
+
+          }
+        }
         console.log(
           `User ${recipientId} is offline. Consider sending a push notification.`,
         );

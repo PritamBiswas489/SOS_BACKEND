@@ -2,6 +2,7 @@ import db from "../databases/models/index.js";
 import "../config/environment.js";
 import { generateLicenseCode } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
+import logger from "../config/winston.js";
 const { Licenses } = db;
 export default class LicenseService {
   static async generateLicenseCode({ userId, payload }, callback) {
@@ -15,6 +16,7 @@ export default class LicenseService {
       return callback(null, { data: { licenseCode: newLicense.license_key } });
     } catch (error) {
       console.error("Error generating license code:", error);
+      logger.error("ERROR In generateLicenseCode", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error('INSERT_ERROR'), null);
     }
@@ -30,6 +32,7 @@ export default class LicenseService {
       return callback(null, { data: { licenseCode: license.license_key } });
     } catch (error) {
       console.error("Error fetching license code:", error);
+      logger.error("ERROR In getLicenseCode", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error('FETCH_ERROR'), null);
     }

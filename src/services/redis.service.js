@@ -1,6 +1,7 @@
 import redisClient from "../config/redis.config.js";
 import RedisStore from "rate-limit-redis";
 import "../config/environment.js";
+import logger from "../config/winston.js";
 
 export default class RedisService {
   //clear full redis cache
@@ -9,6 +10,7 @@ export default class RedisService {
       await redisClient.flushall();
       return { success: true, message: "All Redis caches cleared." };
     } catch (error) {
+        logger.error("ERROR In clearCache", { error: error });
       return {
         success: false,
         message: "Error clearing Redis cache.",
@@ -32,6 +34,7 @@ export default class RedisService {
         data: value,
       };
     } catch (error) {
+        logger.error("ERROR In saveRedisDemoData", { error: error });
       return {
         success: false,
         message: "Error saving data to Redis.",
@@ -57,6 +60,7 @@ export default class RedisService {
         };
       }
     } catch (error) {
+        logger.error("ERROR In getRedisDemoData", { error: error });
       return {
         success: false,
         message: "Error retrieving data from Redis.",

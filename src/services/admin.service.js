@@ -5,6 +5,7 @@ import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
 const path = await import("path");
+import logger from "../config/winston.js";
 
 export default class AdminService {
   // Admin registration service method
@@ -33,6 +34,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in registerAdmin:", error);
+      logger.error("ERROR In registerAdmin", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("REGISTER_ADMIN_FAILED"));
     }
@@ -89,6 +91,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in adminLogin:", error);
+      logger.error("ERROR In loginAdminUser", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("ADMIN_LOGIN_FAILED"));
     }
@@ -134,6 +137,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in listNgos:", error);
+      logger.error("ERROR In listNgos", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("LIST_NGOS_FAILED"));
     }
@@ -205,6 +209,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in rejectNgo:", error);
+      logger.error("ERROR In rejectNgo", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("REJECT_NGO_FAILED"));
     }
@@ -230,6 +235,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in changeNgoStatus:", error);
+      logger.error("ERROR In changeNgoStatus", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_NGO_STATUS_FAILED"));
     }
@@ -255,6 +261,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in upgradeNgoUserLimit:", error);
+      logger.error("ERROR In upgradeNgoUserLimit", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("UPGRADE_NGO_USER_LIMIT_FAILED"));
     }
@@ -274,6 +281,7 @@ export default class AdminService {
       return callback(null, { data: ngos });
     } catch (error) {
       console.error("Error in getNgoAutocompleteByName:", error);
+      logger.error("ERROR In getNgoAutocompleteByName", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("GET_NGO_AUTOCOMPLETE_FAILED"));
     }
@@ -336,6 +344,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in listUsers:", error);
+      logger.error("ERROR In listUsers", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("LIST_USERS_FAILED"));
     }
@@ -361,6 +370,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in changeUserStatus:", error);
+      logger.error("ERROR In changeUserStatus", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_USER_STATUS_FAILED"));
     }
@@ -401,6 +411,7 @@ export default class AdminService {
       });
     } catch (error) {
       console.error("Error in getPendingKycDocuments:", error);
+      logger.error("ERROR In getPendingKycDocuments", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("GET_PENDING_KYC_DOCUMENTS_FAILED"));
     }
@@ -469,6 +480,7 @@ export default class AdminService {
         await transaction.rollback();
       }
       console.error("Error in changeKycDocumentStatus:", error);
+      logger.error("ERROR In changeKycDocumentStatus", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_KYC_DOCUMENT_STATUS_FAILED"));
     }

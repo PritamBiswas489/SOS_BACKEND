@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/node";
 const { AndroidApk } = db;
 import Joi from "joi";
 import path from "path";
+import logger from "../config/winston.js";
 export default class AndroidApkService {
   // Service method for uploading Android APK
   static async uploadAndroidApp({ payload }, callback) {
@@ -42,6 +43,7 @@ export default class AndroidApkService {
       });
     } catch (error) {
       console.error("Error in uploadAndroidApp:", error);
+      logger.error("ERROR In uploadAndroidApp", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("UPLOAD_ANDROID_APP_FAILED"));
     }
@@ -72,6 +74,7 @@ export default class AndroidApkService {
       });
     } catch (error) {
       console.error("Error in getApkReleases:", error);
+      logger.error("ERROR In getApkReleases", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("GET_APK_RELEASES_FAILED"));
     }
@@ -101,6 +104,7 @@ export default class AndroidApkService {
             };
         }catch(error){
             console.error("Error in downloadLatestApk:", error);
+            logger.error("ERROR In downloadLatestApk", { error: error });
             process.env.NODE_ENV === "production" && Sentry.captureException(error);
             return {
                 status: 400,

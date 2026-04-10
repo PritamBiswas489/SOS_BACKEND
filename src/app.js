@@ -27,6 +27,7 @@ import {
   otpSmsService,
 } from "./services/messages.service.js";
 import { constants } from "http2";
+import { log } from "console";
 
 const {
   NODE_ENV,
@@ -229,6 +230,7 @@ app.get("/test-database", async (req, res, next) => {
     console.log("Connection has been established successfully.");
     res.status(200).send({ msg: "Database connection successful" });
   } catch (error) {
+    logger.error("Unable to connect to the database:", { error });
     console.error("Unable to connect to the database:", error);
     res.status(500).send({ msg: "Database connection failed", error });
   }
@@ -302,6 +304,7 @@ app.get("/test-otp/:number/:otp_code", async (req, res) => {
       sms: smsResult,
     });
   } catch (error) {
+    logger.error("Error in OTP verification:", { error });
     console.error("Error in OTP verification:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -312,6 +315,7 @@ app.get("/test-error2", (req, res) => {
     NeverFoundFunction();
   } catch (e) {
     SENTRY_ENABLED === "true" && Sentry.captureException(e);
+    logger.error("An error occurred in /test-error2 route", { error: e });
     res.status(500).send({ error: "something went wrong" });
   }
 });

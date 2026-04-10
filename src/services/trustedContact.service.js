@@ -1,6 +1,8 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
+import logger from "../config/winston.js";
+import PushNotificationService from "./pushNotification.service.js";
 const { Op, User, TrustedContacts, Devices } = db;
 
 export default class TrustedContactService {
@@ -66,7 +68,7 @@ export default class TrustedContactService {
 
       return callback(null, { data: newTrustedContact });
     } catch (error) {
-      console.error("Error sending trusted contact invitation:", error);
+      logger.error("ERROR In sendTrustedContactInvitation", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("SEND_INVITATION_FAILED"), null);
     }
@@ -101,7 +103,7 @@ export default class TrustedContactService {
       });
       return callback(null, { data: friends });
     }catch (error) {
-      console.error("Error fetching chat contact friend list:", error);
+      logger.error("ERROR In chatContactFriendList", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("GET_CHAT_CONTACT_FRIEND_LIST_FAILED"), null);
     }
@@ -129,12 +131,21 @@ export default class TrustedContactService {
               where: { is_active: true },
               attributes: ["id", "name", "phone_number"],
               required: true,
+               include: [
+                {
+                  model: Devices,
+                  as: "devices",
+                  required: false,
+                  attributes: ["id", "device_token", "device_type"],
+                },
+              ],
             },
             {
               model: User,
               as: "trusted_contact",
               where: { is_active: true },
               attributes: ["id", "name", "phone_number"],
+             
               required: true,
             }
           ],
@@ -179,10 +190,32 @@ export default class TrustedContactService {
       }
 
       await transaction.commit();
+
+      if(invitation?.inviter && invitation?.inviter.devices) {
+        for (const device of invitation.inviter.devices) {
+          if (device.device_token) {
+            PushNotificationService.sendNotificationByFcmToken(
+              {
+                fcmToken: device.device_token,
+                title: "Trusted Contact Invitation Accepted",
+                body: `${invitation?.trusted_contact?.name} has accepted your trusted contact invitation.`,
+                data: { invitationId: invitation.id, messageType: "ACCEPTED_TRUSTED_CONTACT" },
+              },
+              (err, response) => {
+                if (err) {
+                  logger.error("ERROR In sending push notification", { error: err });
+                } else {
+                  logger.info("Push notification sent successfully", { response });
+                }
+              }
+            );
+          }
+        }
+      }
       return callback(null, { data: invitation });
     } catch (error) {
       await transaction.rollback();
-      console.error("Error accepting trusted contact invitation:", error);
+      logger.error("ERROR In acceptTrustedContactInvitation", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("ACCEPT_INVITATION_FAILED"), null);
     }
@@ -214,10 +247,7 @@ export default class TrustedContactService {
       });
       return callback(null, { data: pendingInvitations });
     } catch (error) {
-      console.error(
-        "Error fetching pending trusted contact invitations:",
-        error,
-      );
+      logger.error("ERROR In getPendingIncommingTrustedContactInvitations", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("GET_PENDING_INVITATIONS_FAILED"), null);
     }
@@ -246,10 +276,7 @@ export default class TrustedContactService {
       });
       return callback(null, { data: pendingInvitations });
     } catch (error) {
-      console.error(
-        "Error fetching pending outgoing trusted contact invitations:",
-        error,
-      );
+      logger.error("ERROR In getPendingOutgoingTrustedContactInvitations", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("GET_PENDING_OUTGOING_INVITATIONS_FAILED"), null);
     }
@@ -287,11 +314,31 @@ export default class TrustedContactService {
       });
       return callback(null, { data: trustedContacts });
     } catch (error) {
-      console.error("Error fetching trusted contacts:", error);
+      logger.error("ERROR In getTrustedContacts", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("GET_TRUSTED_CONTACTS_FAILED"), null);
     }
   }
+  static async getTrustedContactDetailsByUserIdAndTrustedContactId({ userid, payload, headers }, callback) {
+    try {
+      const { trustedContactId } = payload;
+      const trustedContact = await TrustedContacts.findOne({
+        where: {
+          user_id: userid,
+          trusted_user_id: trustedContactId,
+        }
+      });
+      if (!trustedContact) {
+        return callback(new Error("TRUSTED_CONTACT_NOT_FOUND"), null);
+      }
+      return callback(null, { data: trustedContact });
+    } catch (error) {
+      logger.error("ERROR In getTrustedContactDetailsByUserIdAndTrustedContactId", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_TRUSTED_CONTACT_DETAILS_FAILED"), null);
+    }
+  }
+
   //cancel trusted contact invitation
   static async cancelTrustedContactInvitation(
     { userid, payload, headers },
@@ -320,7 +367,7 @@ export default class TrustedContactService {
       await invitation.save();
       return callback(null, { data: invitation });
     } catch (error) {
-      console.error("Error canceling trusted contact invitation:", error);
+      logger.error("ERROR In cancelTrustedContactInvitation", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("CANCEL_INVITATION_FAILED"), null);
     }
@@ -333,14 +380,50 @@ export default class TrustedContactService {
     const transaction = await db.sequelize.transaction();
     try {
       const { id: invitationId } = payload;
-      const invitation = await TrustedContacts.findOne({
-        where: {
-          id: invitationId,
+      const invitation = await TrustedContacts.findOne(
+        {
+          where: {
+            id: invitationId,
+          },
+          include: [
+            {
+              model: User,
+              as: "inviter",
+              where: { is_active: true },
+              attributes: ["id", "name", "phone_number"],
+              required: true,
+              include: [
+                {
+                  model: Devices,
+                  as: "devices",
+                  required: false,
+                  attributes: ["id", "device_token", "device_type"],
+                },
+              ],
+            },
+            {
+              model: User,
+              as: "trusted_contact",
+              where: { is_active: true },
+              attributes: ["id", "name", "phone_number"],
+              include: [
+                {
+                  model: Devices,
+                  as: "devices",
+                  required: false,                  
+                  attributes: ["id", "device_token", "device_type"],
+                },
+              ],
+
+              required: true,
+            },
+          ],
         },
-      },{
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
       if (!invitation) {
         await transaction.rollback();
         return callback(new Error("INVITATION_NOT_FOUND"), null);
@@ -371,6 +454,38 @@ export default class TrustedContactService {
           transaction,
         });
          await transaction.commit();
+           if (
+             invitation?.trusted_contact &&
+             invitation?.trusted_contact.devices
+           ) {
+             for (const device of invitation.trusted_contact.devices) {
+               if (device.device_token) {
+                 PushNotificationService.sendNotificationByFcmToken(
+                   {
+                     fcmToken: device.device_token,
+                     title: "Trusted Contact Invitation Deleted",
+                     body: `You are no longer a trusted contact of ${invitation?.inviter?.name}.`,
+                     data: {
+                       invitationId: invitation.id,
+                       messageType: "DELETED_TRUSTED_CONTACT",
+                     },
+                   },
+                   (err, response) => {
+                     if (err) {
+                       logger.error("ERROR In sending push notification", {
+                         error: err,
+                       });
+                     } else {
+                       logger.info("Push notification sent successfully", {
+                         response,
+                       });
+                     }
+                   },
+                 );
+               }
+             }
+           }
+         
         return callback(null, {
           data: "Successfully deleted trusted contact",
         });
@@ -383,7 +498,7 @@ export default class TrustedContactService {
       });
     } catch (error) {
         await transaction.rollback();
-      console.error("Error deleting trusted contact:", error);
+      logger.error("ERROR In deleteTrustedContactInvitation", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
     }
@@ -398,14 +513,14 @@ export default class TrustedContactService {
       });
       return callback(null, { data: count });
     } catch (error) {
-      console.error("Error counting trusted contacts:", error);
+      logger.error("ERROR In countTrustedContacts", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("COUNT_TRUSTED_CONTACTS_FAILED"), null);
     }
   }
 
   static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {
-    console.log("Fetching trusted contact devices tokens for user ID:", userid);
-    console.log("Payload:", payload);
+    logger.info("Fetching trusted contact devices tokens for user ID:", userid);
+    logger.info("Payload:", payload);
   }
 }
