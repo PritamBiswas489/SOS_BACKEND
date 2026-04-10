@@ -1,6 +1,7 @@
 /node_modules
 /uploads
 /sessions
+/logs
 .env
 *.zip
 package-lock.json

@@ -20,6 +20,7 @@ import locales from "./middlewares/locales.js";
 import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
 import cookieParser from "cookie-parser";
+import logger from "./config/winston.js";
 
 import {
   otpWhatsappService,
@@ -230,6 +231,14 @@ app.get("/test-database", async (req, res, next) => {
   } catch (error) {
     console.error("Unable to connect to the database:", error);
     res.status(500).send({ msg: "Database connection failed", error });
+  }
+});
+app.get("/test-error", (req, res) => {
+  try {
+    throw new Error("Testing winston error logging");
+  } catch (e) {
+    logger.error("An error occurred in /test-error route", { error: e });
+    res.status(500).send({ error: "something went wrong" });
   }
 });
 /**
