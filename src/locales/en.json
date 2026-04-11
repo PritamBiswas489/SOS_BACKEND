@@ -489,8 +489,17 @@
 	"CHAT_MEDIA_UPLOAD_FAILED": "Failed to upload chat media.",
 	"CHAT_MEDIA_UPLOAD_SUCCESSFUL": "Chat media uploaded successfully.",
 	"TRUSTED_CONTACT_LIMIT_REACHED": "Trusted contact limit reached. You can only have up to 10 trusted contacts.",
-	"DELETE_DEVICE_TOKEN_SUCCESSFUL": "DELETE_DEVICE_TOKEN_SUCCESSFUL",
-	"GET_CHAT_CONTACT_FRIEND_LIST_SUCCESSFUL": "GET_CHAT_CONTACT_FRIEND_LIST_SUCCESSFUL",
-	"PUSH_NOTIFICATION_TEST_FAILED": "PUSH_NOTIFICATION_TEST_FAILED",
-	"PUSH_NOTIFICATION_TEST_SUCCESSFUL": "PUSH_NOTIFICATION_TEST_SUCCESSFUL"
+	"DELETE_DEVICE_TOKEN_SUCCESSFUL": "Device token deleted successfully.",
+	"GET_CHAT_CONTACT_FRIEND_LIST_SUCCESSFUL": "Chat contact friend list fetched successfully.",
+	"PUSH_NOTIFICATION_TEST_FAILED": "Push notification test failed.",
+	"PUSH_NOTIFICATION_TEST_SUCCESSFUL": "Push notification test sent successfully.",
+	"TRUSTED_CONTACT_NAME_REQUIRED": "Trusted contact name is required.",
+	"TRUSTED_CONTACT_NAME_MIN_LENGTH": "Trusted contact name must be at least 2 characters long.",
+	"TRUSTED_CONTACT_NAME_MAX_LENGTH": "Trusted contact name must be at most 50 characters long.",
+	"RELATIONSHIP_REQUIRED": "Relationship is required.",
+	"RELATIONSHIP_MIN_LENGTH": "Relationship must be at least 2 characters long.",
+	"RELATIONSHIP_MAX_LENGTH": "Relationship must be at most 50 characters long.",
+	"INVALID_SOS_ALERT_VALUE": "Invalid SOS alert value.",
+	"INVALID_SHARE_LOCATION_VALUE": "Invalid share location value."
+	
 }

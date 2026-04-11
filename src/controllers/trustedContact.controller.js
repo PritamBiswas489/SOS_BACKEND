@@ -2,11 +2,34 @@ import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import "../config/environment.js";
 import TrustedContactService from "../services/trustedContact.service.js";
+import { sendTrustedContactInvitationValidator } from "../validators/trustedContact.validator.js";
 
 export default class TrustedContactController {
   static async sendTrustedContactInvitation(request) {
     const { payload, headers, user } = request;
     const userid = user?.id;
+
+    const insertedData = {
+      name: payload?.name,
+      mobile_number: payload?.mobile_number,
+      relationship: payload?.relationship,
+      sos_alert: payload?.sos_alert,
+      share_location: payload?.share_location,
+    };
+
+    const [validationError] = await sendTrustedContactInvitationValidator(
+      insertedData,
+      headers?.i18n,
+    );
+
+    if (validationError) {
+      return {
+        status: 400,
+        data: null,
+        error: { message: validationError.error.message },
+      };
+    }
+
     return new Promise((resolve) => {
       TrustedContactService.sendTrustedContactInvitation(
         { userid, payload, headers },

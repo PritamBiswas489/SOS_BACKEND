@@ -198,7 +198,7 @@ export default class TrustedContactService {
               {
                 fcmToken: device.device_token,
                 title: "Trusted Contact Invitation Accepted",
-                body: `${invitation?.trusted_contact?.name} has accepted your trusted contact invitation.`,
+                body: `${invitation?.trusted_contact?.name || invitation?.trusted_contact?.phone_number} has accepted your trusted contact invitation.`,
                 data: { invitationId: invitation.id, messageType: "ACCEPTED_TRUSTED_CONTACT" },
               },
               (err, response) => {
