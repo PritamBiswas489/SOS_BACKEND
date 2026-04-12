@@ -8,6 +8,8 @@ const redisConfig = {
 	host: REDIS_HOST, // Redis host
 	family: 4, // 4 (IPv4) or 6 (IPv6)
 	username: REDIS_USERNAME,
+	maxRetriesPerRequest: null,
+	enableReadyCheck:false,
 	password: REDIS_PASSWORD,
 	db: REDIS_DATABASE,
 };

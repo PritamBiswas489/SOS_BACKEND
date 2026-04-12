@@ -500,6 +500,6 @@
 	"RELATIONSHIP_MIN_LENGTH": "Relationship must be at least 2 characters long.",
 	"RELATIONSHIP_MAX_LENGTH": "Relationship must be at most 50 characters long.",
 	"INVALID_SOS_ALERT_VALUE": "Invalid SOS alert value.",
-	"INVALID_SHARE_LOCATION_VALUE": "Invalid share location value."
-	
+	"INVALID_SHARE_LOCATION_VALUE": "Invalid share location value.",
+	"BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY": "BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY"
 }

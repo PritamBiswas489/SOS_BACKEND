@@ -4,6 +4,8 @@ import * as Sentry from "@sentry/node";
 import logger from "../config/winston.js";
 import PushNotificationService from "./pushNotification.service.js";
 const { Op, User, TrustedContacts, Devices } = db;
+import { enqueueBulk } from "../queues/notificationQueue.js";
+import e from "cors";
 
 export default class TrustedContactService {
   //send trusted contact invitation
@@ -194,21 +196,12 @@ export default class TrustedContactService {
       if(invitation?.inviter && invitation?.inviter.devices) {
         for (const device of invitation.inviter.devices) {
           if (device.device_token) {
-            PushNotificationService.sendNotificationByFcmToken(
-              {
-                fcmToken: device.device_token,
-                title: "Trusted Contact Invitation Accepted",
-                body: `${invitation?.trusted_contact?.name || invitation?.trusted_contact?.phone_number} has accepted your trusted contact invitation.`,
-                data: { invitationId: invitation.id, messageType: "ACCEPTED_TRUSTED_CONTACT" },
-              },
-              (err, response) => {
-                if (err) {
-                  logger.error("ERROR In sending push notification", { error: err });
-                } else {
-                  logger.info("Push notification sent successfully", { response });
-                }
-              }
-            );
+            enqueueBulk([device.device_token], {
+              title: "Trusted Contact Invitation Accepted",
+              body: `${invitation?.trusted_contact?.name || invitation?.trusted_contact?.phone_number} has accepted your trusted contact invitation.`,
+              data: { invitationId: invitation.id, messageType: "ACCEPTED_TRUSTED_CONTACT" },
+            });
+            
           }
         }
       }
@@ -460,28 +453,11 @@ export default class TrustedContactService {
            ) {
              for (const device of invitation.trusted_contact.devices) {
                if (device.device_token) {
-                 PushNotificationService.sendNotificationByFcmToken(
-                   {
-                     fcmToken: device.device_token,
-                     title: "Trusted Contact Invitation Deleted",
-                     body: `You are no longer a trusted contact of ${invitation?.inviter?.name}.`,
-                     data: {
-                       invitationId: invitation.id,
-                       messageType: "DELETED_TRUSTED_CONTACT",
-                     },
-                   },
-                   (err, response) => {
-                     if (err) {
-                       logger.error("ERROR In sending push notification", {
-                         error: err,
-                       });
-                     } else {
-                       logger.info("Push notification sent successfully", {
-                         response,
-                       });
-                     }
-                   },
-                 );
+                enqueueBulk([device.device_token], {
+                  title: "Trusted Contact Invitation Deleted",
+                  body: `You are no longer a trusted contact of ${invitation?.inviter?.name}.`,
+                  data: { invitationId: invitation.id, messageType: "DELETED_TRUSTED_CONTACT" },
+                }); 
                }
              }
            }

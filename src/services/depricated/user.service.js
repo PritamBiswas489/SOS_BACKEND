@@ -5,6 +5,8 @@ import KycService from "./kyc.service.js";
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
 import PushNotificationService from "./pushNotification.service.js";
 import moment from "moment-timezone";
+import { enqueueBulk } from "../../queues/notificationQueue.js";
+import e from "cors";
 
 const { Op, User, UserKyc, UserWallet, UserDevices, UserFcm, UserSettings } = db;
 
@@ -121,20 +123,14 @@ export default class UserService {
       const allDevice = await UserDevices.findAll({ where: { userId: userId } });
       if(sendNotification && fcmToken){
         console.log("Sending device logged out notification to FCM token:", fcmToken);
-        PushNotificationService.sendNotificationByFcmToken(
-          {
-            fcmToken: fcmToken,
-            title: i18n.__("DEVICE_LOGGED_OUT",{ deviceName: deviceName || deviceid  }),
-            body: i18n.__("YOUR_DEVICE_HAS_BEEN_LOGGED_OUT",{ deviceName: deviceName || deviceid }),
-            data: {
-              deviceId: deviceid,
-              action: "DEVICE_LOGGED_OUT",
-            },
+        enqueueBulk([fcmToken], {
+          title: i18n.__("DEVICE_LOGGED_OUT",{ deviceName: deviceName || deviceid }),
+          body: i18n.__("YOUR_DEVICE_HAS_BEEN_LOGGED_OUT",{ deviceName: deviceName || deviceid }),
+          data: {
+            deviceId: deviceid,
+            action: "DEVICE_LOGGED_OUT",
           },
-          () => {
-            // Notification result ignored intentionally
-          }
-        );
+        });
       }
       return callback(null, { data:  allDevice });
     } catch (error) {

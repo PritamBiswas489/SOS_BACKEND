@@ -42,4 +42,49 @@ router.post("/test-send-push-notification", async (req, res, next) => {
       res.return(response);
 });
 
+
+
+/**
+ * @swagger
+ * /api-mobile/front/push-notification/queue-batch-push-notification:
+ *   post:
+ *     summary: Queue batch push notifications
+ *     tags:
+ *       - Push notification services routes
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fcmTokens:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["token_1", "token_2"]
+ *               payload:
+ *                 type: object
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *                     default: "Batch title"
+ *                   body:
+ *                     type: string
+ *                     default: "Batch message"
+ *                   data:
+ *                     type: object
+ *                     example: { "key1": "value1", "key2": "value2" }
+ *     responses:
+ *       200:
+ *         description: Batch push notification queued successfully
+ */
+router.post("/queue-batch-push-notification", async (req, res, next) => {
+      const response = await PushNotificationController.queueBatchPushNotification({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+      });
+      res.return(response);
+});
+
 export default router;

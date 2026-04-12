@@ -5,6 +5,7 @@ import { promisify } from "../libraries/utility.js";
 import PushNotificationService from "../services/pushNotification.service.js";
 import UserService from "../services/user.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
+import { enqueueBulk } from "../queues/notificationQueue.js";
 export const registerChatHandlers = (io, socket) => {
   socket.on("message:send", async (load, ack) => {
     try {
@@ -109,20 +110,13 @@ export const registerChatHandlers = (io, socket) => {
         if(recipientDeviceTokens && recipientDeviceTokens.length > 0){
           const notificationTitle = `New message from ${senderName}`;
           const notificationBody = text ? text : "Sent you a new message";
-          for(const token of recipientDeviceTokens){
-            await promisify(
-              PushNotificationService.sendNotificationByFcmToken.bind(PushNotificationService),
-              {
-                fcmToken: token,
-                title: notificationTitle,
-                body: notificationBody,
-                data: {
-                   messageType:'CHAT_MESSAGE',
-                }
-              },
-            );
-
-          }
+          enqueueBulk(recipientDeviceTokens, {
+            title: notificationTitle,
+            body: notificationBody,
+            data: {
+               messageType:'CHAT_MESSAGE',
+            }
+          });
         }
         console.log(
           `User ${recipientId} is offline. Consider sending a push notification.`,
