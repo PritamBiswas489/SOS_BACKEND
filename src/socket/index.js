@@ -10,6 +10,7 @@ import { registerChatHandlers } from "./chatHandler.js";
 import { registerTypingHandlers } from "./typingHandler.js";
 import { registerStatusHandlers } from "./statusHandler.js";
 import { registerPresenceHandlers } from "./presenceHandler.js";
+import { registerTrustedContactHandler } from "./trustedContacthandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
@@ -198,6 +199,8 @@ export const initSocketServer = async (httpServer) => {
     registerStatusHandlers(io, socket);
     //Register presence-related event handlers
     registerPresenceHandlers(io, socket);
+    //Register trusted contact-related event handlers
+    registerTrustedContactHandler(io, socket);
 
     // Notify contacts that user is online
     socket.broadcast.emit("user:online", { userId, userName });

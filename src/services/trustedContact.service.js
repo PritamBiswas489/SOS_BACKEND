@@ -2,15 +2,16 @@ import "../config/environment.js";
 import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import logger from "../config/winston.js";
-import PushNotificationService from "./pushNotification.service.js";
+import UserService from "./user.service.js";
 const { Op, User, TrustedContacts, Devices } = db;
 import { enqueueBulk } from "../queues/notificationQueue.js";
+import { promisify } from "../libraries/utility.js";
 import e from "cors";
 
 export default class TrustedContactService {
   //send trusted contact invitation
   static async sendTrustedContactInvitation(
-    { userid, payload, headers },
+    { userid, payload },
     callback,
   ) {
     console.log("Sending trusted contact invitation for user ID:", userid);
@@ -48,13 +49,37 @@ export default class TrustedContactService {
       //Now we can add the trusted contact to the user's trusted contact list
       const checkExistingContact = await TrustedContacts.findOne({
         where: {
-          user_id: userid,
-          trusted_user_id: getUser.id,
+          [Op.or]: [
+            {
+              user_id: userid,
+              trusted_user_id: getUser.id,
+            },
+            {
+              user_id: getUser.id,
+              trusted_user_id: userid,
+            },
+          ],
         },
       });
+       
       if (checkExistingContact) {
-        return callback(new Error("TRUSTED_CONTACT_ALREADY_EXISTS"), null);
+         
+        console.log("userid",userid);
+        console.log({userId :  checkExistingContact.user_id, trustedUserId: checkExistingContact.trusted_user_id, status: checkExistingContact.status});
+        console.log("Existing trusted contact found:", checkExistingContact.toJSON());
+          if(checkExistingContact.status === "pending" && userid === checkExistingContact.user_id){
+             
+            return callback(new Error("TRUSTED_CONTACT_INVITATION_ALREADY_SENT"), null);
+          }
+          else if(checkExistingContact.status === "pending" && userid === checkExistingContact.trusted_user_id){
+             
+               return callback(new Error("TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER"), null);
+          }
+          else if(checkExistingContact.status === "accepted"){
+              return callback(new Error("TRUSTED_CONTACT_ALREADY_EXISTS"), null);
+          }
       }
+    
       const newTrustedContact = await TrustedContacts.create({
         user_id: userid,
         trusted_user_id: getUser.id,
@@ -68,6 +93,19 @@ export default class TrustedContactService {
         newTrustedContact,
       );
 
+       let recipientDeviceTokens = [];
+       recipientDeviceTokens = await promisify(
+           UserService.getUserDeviceTokens.bind(UserService),
+           getUser.id,
+         ).catch((err) => {});
+
+         if(recipientDeviceTokens.length > 0){
+            enqueueBulk(recipientDeviceTokens, {
+              title: "New Trusted Contact Invitation",
+              body: `You have received a trusted contact invitation from ${newTrustedContact.nickname || "a user"}.`,
+              data: { invitationId: newTrustedContact.id, messageType: "NEW_TRUSTED_CONTACT_INVITATION" },
+            });
+         }
       return callback(null, { data: newTrustedContact });
     } catch (error) {
       logger.error("ERROR In sendTrustedContactInvitation", { error: error });
@@ -314,6 +352,7 @@ export default class TrustedContactService {
   }
   static async getTrustedContactDetailsByUserIdAndTrustedContactId({ userid, payload, headers }, callback) {
     try {
+      console.log("Fetching trusted contact details for user ID:", userid, "with payload:", payload);
       const { trustedContactId } = payload;
       const trustedContact = await TrustedContacts.findOne({
         where: {
@@ -463,7 +502,8 @@ export default class TrustedContactService {
            }
          
         return callback(null, {
-          data: "Successfully deleted trusted contact",
+          data: invitation,
+
         });
       }
       
@@ -479,6 +519,7 @@ export default class TrustedContactService {
       return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
     }
   }
+   
   static async countTrustedContacts({ userid, payload, headers }, callback) {
     try {
       const count = await TrustedContacts.count({

@@ -36,6 +36,9 @@ export default async (req, res, next) => {
 		try {
 			const verifiedData = jwt.verify(token, ACCESS_TOKEN_SECRET_KEY);
 			const getUserById = await UserService.getUserById(verifiedData.id);	
+			if(!getUserById){
+				return res.send({ status: 403, data: [], error: { message: i18n.__("USER_NOT_FOUND") } });
+			}
 			if(!getUserById.is_active){
 				return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 			}
@@ -70,7 +73,10 @@ export default async (req, res, next) => {
 				};
 
 				const getUserById = await UserService.getUserById(data.id);
-				 
+				
+				if(!getUserById){
+					return res.send({ status: 403, data: [], error: { message: i18n.__("USER_NOT_FOUND") } });
+				}
 				if(!getUserById.is_active){
 					return res.send({ status: 403, data: [], error: { message: i18n.__("DEACTIVATED_BY_SYSTEM_ADMIN") } });
 				}

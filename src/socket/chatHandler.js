@@ -2,7 +2,6 @@ import moment from "moment";
 import { getSocketIdsForUser } from "./index.js";
 import ChatService from "../services/chat.service.js";
 import { promisify } from "../libraries/utility.js";
-import PushNotificationService from "../services/pushNotification.service.js";
 import UserService from "../services/user.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
 import { enqueueBulk } from "../queues/notificationQueue.js";
@@ -49,10 +48,11 @@ export const registerChatHandlers = (io, socket) => {
       if(replyTo){  
           replyToMessage = await ChatService.getMessageDetails(replyTo);
       }
-      const trustedContact = await promisify(
+      let trustedContact = null;
+       trustedContact = await promisify(
         TrustedContactService.getTrustedContactDetailsByUserIdAndTrustedContactId.bind(TrustedContactService),
         { userid: dbMessage.recipient_id, payload: { trustedContactId: socket.userId }, headers: {} },
-      );
+      ).catch((err) => {});
       console.log("Trusted contact details:", trustedContact);
       let senderName = socket.userName;
       if(trustedContact?.data?.nickname){
@@ -103,10 +103,17 @@ export const registerChatHandlers = (io, socket) => {
         });
       } else {
         //Push notification logic can be implemented here for offline users
-        const recipientDeviceTokens = await promisify(
+        let recipientDeviceTokens = [];
+        try{
+          recipientDeviceTokens = await promisify(
           UserService.getUserDeviceTokens.bind(UserService),
           recipientId,
         );
+
+        }catch(err){
+
+        }
+        
         if(recipientDeviceTokens && recipientDeviceTokens.length > 0){
           const notificationTitle = `New message from ${senderName}`;
           const notificationBody = text ? text : "Sent you a new message";

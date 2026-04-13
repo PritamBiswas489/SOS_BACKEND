@@ -501,5 +501,7 @@
 	"RELATIONSHIP_MAX_LENGTH": "Relationship must be at most 50 characters long.",
 	"INVALID_SOS_ALERT_VALUE": "Invalid SOS alert value.",
 	"INVALID_SHARE_LOCATION_VALUE": "Invalid share location value.",
-	"BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY": "BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY"
+	"BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY": "Batch push notification queued successfully.",
+	"TRUSTED_CONTACT_INVITATION_ALREADY_SENT": "Trusted contact invitation already sent.",
+	"TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER": "A trusted contact invitation is already pending from the other user."
 }
