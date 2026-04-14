@@ -2,6 +2,9 @@
 	"CATCH_ERROR": "Something went wrong! Please try again later.",
 	"USER_NOT_FOUND": "User details not found.",
 	"PROFILE_UPDATED_SUCCESSFULLY": "Profile updated successfully.",
+	"UPDATE_PROFILE_SUCCESSFUL": "Profile updated successfully.",
+	"UPDATE_PROFILE_FAILED": "Failed to update profile.",
+	"NO_UPDATE_DATA_PROVIDED": "No update data provided.",
 	"NO_FILE_UPLOADED": "No file uploaded.",
 	"IMAGE_UPLOADED_SUCCESSFULLY": "Image uploaded successfully!",
 	"USER_NOT_FOUND_WITH_ID": "User not found for ID {{id}}.",
@@ -503,5 +506,7 @@
 	"INVALID_SHARE_LOCATION_VALUE": "Invalid share location value.",
 	"BATCH_PUSH_NOTIFICATION_QUEUED_SUCCESSFULLY": "Batch push notification queued successfully.",
 	"TRUSTED_CONTACT_INVITATION_ALREADY_SENT": "Trusted contact invitation already sent.",
-	"TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER": "A trusted contact invitation is already pending from the other user."
+	"TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER": "A trusted contact invitation is already pending from the other user.",
+	"REJECT_INVITATION_SUCCESSFUL": "Invitation rejected successfully.",
+	"path is not defined": "path is not defined"
 }

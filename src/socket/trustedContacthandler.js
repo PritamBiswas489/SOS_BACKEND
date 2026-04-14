@@ -135,9 +135,16 @@ export const registerTrustedContactHandler = (io, socket) => {
                   });
                 }
               }
+
+              if(typeof ack === "function") {
+                return ack({
+                  success: true,
+                  message: i18n.__("ACCEPT_INVITATION_SUCCESSFUL"),
+                });
+              }
         }
     });
-    socket.on("reject:trustedContactRequest", async (payload, ack) => {
+    socket.on("delete:trustedContactRequest", async (payload, ack) => {
         const userId = socket.userId;
         const rejectData = JSON.parse(payload);
         const reject  = await promisify(
@@ -172,6 +179,12 @@ export const registerTrustedContactHandler = (io, socket) => {
                       message: i18n.__("REJECT_INVITATION_SUCCESSFUL"),
                     });
                   }
+                }
+                if(typeof ack === "function") {
+                  return ack({
+                    success: true,
+                    message: i18n.__("REJECT_INVITATION_SUCCESSFUL"),
+                  });
                 }
         }
     });

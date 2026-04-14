@@ -87,4 +87,34 @@ export default class ProfileController {
       );
     });
   }
+
+  static async updateProfile(request) {
+    const { payload, headers, user, profileImagePath } = request;
+    const userid = user?.id;
+    return new Promise((resolve) => {
+      UserService.updateProfile(
+        { userId: userid, payload, headers, profileImagePath },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "UPDATE_PROFILE_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response,
+            message: headers?.i18n.__("UPDATE_PROFILE_SUCCESSFUL"),
+            error: null,
+          });
+        }
+      );
+    });
+  }
 }

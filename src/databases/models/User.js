@@ -97,6 +97,11 @@ export default function User(sequelize, DataTypes) {
         type: DataTypes.DATE,
         allowNull: true,
         defaultValue: null
+      },
+      first_time_login: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
       }
     },
     {

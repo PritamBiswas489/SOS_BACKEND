@@ -4,6 +4,8 @@ import * as Sentry from "@sentry/node";
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
 import logger from "../config/winston.js";
 import moment from "moment-timezone";
+import fs from "fs";
+import path from "path";
  
 
 const { Op, User, Licenses, Devices } = db;
@@ -50,6 +52,16 @@ export default class UserService {
       });
       if (!user) {
         return callback(new Error("USER_NOT_FOUND"), null);
+      }
+      const userAvatafrUrl = user.profile_photo;
+      //check image exists in uploads folder if not set default avatar
+      if (userAvatafrUrl) {
+        const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(userAvatafrUrl));
+        if (!fs.existsSync(imagePath)) {
+          user.profile_photo = null; // or set to a default avatar URL if you have one
+        }else{
+          user.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(userAvatafrUrl)}`;
+        }
       }
       return callback(null, user);
     } catch (error) {
@@ -108,6 +120,56 @@ export default class UserService {
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       logger.error("ERROR In deleteDeviceToken", { error: error });
       return callback(new Error("DELETE_DEVICE_TOKEN_FAILED"), null);
+    }
+  }
+
+  static async updateProfile({ userId, payload, headers, profileImagePath }, callback) {
+    try {
+      const user = await User.findOne({
+        where: { id: userId, role: "USER" },
+      });
+      if (!user) {
+        return callback(new Error("USER_NOT_FOUND"), null);
+      }
+
+      const updateData = {};
+
+      // Update name if provided
+      if (payload.name) {
+        updateData.name = payload.name;
+      }
+
+      // Update email if provided
+      if (payload.email) {
+        updateData.email = payload.email;
+      }
+
+      // Update profile image if provided
+      if (profileImagePath) {
+        updateData.profile_photo = profileImagePath;
+      }
+
+      // Only update if there's data to update
+      if (Object.keys(updateData).length === 0) {
+        return callback(new Error("NO_UPDATE_DATA_PROVIDED"), null);
+      }
+      updateData.first_time_login = false; // Set first_time_login to false on profile update 
+
+      await User.update(updateData, {
+        where: { id: userId },
+      });
+
+      const updatedUser = await User.findOne({
+        where: { id: userId },
+        attributes: { exclude: ["password_hash", "created_at", "updated_at"] },
+      });
+
+      return callback(null, updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      logger.error("ERROR In updateProfile", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(error, null);
     }
   }
    

@@ -6,7 +6,8 @@ import UserService from "./user.service.js";
 const { Op, User, TrustedContacts, Devices } = db;
 import { enqueueBulk } from "../queues/notificationQueue.js";
 import { promisify } from "../libraries/utility.js";
-import e from "cors";
+import path from "path";
+import fs from "fs";
 
 export default class TrustedContactService {
   //send trusted contact invitation
@@ -141,7 +142,29 @@ export default class TrustedContactService {
           },
         ],
       });
-      return callback(null, { data: friends });
+        const friendsData = friends.map((friend) => {
+          const friendData = friend.toJSON();
+          const trustedContactProfilePhoto = friendData.trusted_contact?.profile_photo;
+          if (trustedContactProfilePhoto) {
+            const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(trustedContactProfilePhoto));
+            if (!fs.existsSync(imagePath)) {
+              friendData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
+            }else{
+              friendData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(trustedContactProfilePhoto)}`;
+            }
+          }
+          const inviterProfilePhoto = friendData.inviter?.profile_photo;
+          if (inviterProfilePhoto) {
+            const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(inviterProfilePhoto));
+            if (!fs.existsSync(imagePath)) {
+              friendData.inviter.profile_photo = null; // or set to a default avatar URL if you have one
+            }else{
+              friendData.inviter.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(inviterProfilePhoto)}`;
+            }
+          } 
+          return friendData;
+        });
+      return callback(null, { data: friendsData });
     }catch (error) {
       logger.error("ERROR In chatContactFriendList", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
@@ -276,7 +299,20 @@ export default class TrustedContactService {
           },
         ],
       });
-      return callback(null, { data: pendingInvitations });
+      const data = pendingInvitations.rows.map((invitation) => {
+        const invitationData = invitation.toJSON();
+        const inviterProfilePhoto = invitationData.inviter?.profile_photo;
+        if (inviterProfilePhoto) {
+          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(inviterProfilePhoto));
+          if (!fs.existsSync(imagePath)) {
+            invitationData.inviter.profile_photo = null; // or set to a default avatar URL if you have one
+          }else{
+            invitationData.inviter.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(inviterProfilePhoto)}`;
+          }
+        }
+        return invitationData;
+      });
+      return callback(null, { data: { rows: data, count: pendingInvitations.count } });
     } catch (error) {
       logger.error("ERROR In getPendingIncommingTrustedContactInvitations", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
@@ -305,7 +341,20 @@ export default class TrustedContactService {
           },
         ],
       });
-      return callback(null, { data: pendingInvitations });
+      const data = pendingInvitations.rows.map((invitation) => {
+        const invitationData = invitation.toJSON();
+        const trustedContactProfilePhoto = invitationData.trusted_contact?.profile_photo;
+        if (trustedContactProfilePhoto) {
+          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(trustedContactProfilePhoto));
+          if (!fs.existsSync(imagePath)) {
+            invitationData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
+          }else{
+            invitationData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(trustedContactProfilePhoto)}`;
+          }
+        }
+        return invitationData;
+      });
+      return callback(null, { data: { rows: data, count: pendingInvitations.count } });
     } catch (error) {
       logger.error("ERROR In getPendingOutgoingTrustedContactInvitations", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
@@ -343,7 +392,20 @@ export default class TrustedContactService {
           },
         ],
       });
-      return callback(null, { data: trustedContacts });
+      const data = trustedContacts.rows.map((contact) => {
+        const contactData = contact.toJSON();
+        if (contactData.trusted_contact && contactData.trusted_contact.profile_photo) {
+          const userAvatafrUrl = contactData.trusted_contact.profile_photo;
+          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(userAvatafrUrl));
+          if (!fs.existsSync(imagePath)) {
+            contactData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
+          }else{
+            contactData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(userAvatafrUrl)}`;
+          }
+        }
+        return contactData;
+      });
+      return callback(null, { data: { count: trustedContacts.count, rows: data } });
     } catch (error) {
       logger.error("ERROR In getTrustedContacts", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
