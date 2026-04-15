@@ -11,6 +11,7 @@ import { registerTypingHandlers } from "./typingHandler.js";
 import { registerStatusHandlers } from "./statusHandler.js";
 import { registerPresenceHandlers } from "./presenceHandler.js";
 import { registerTrustedContactHandler } from "./trustedContacthandler.js";
+import { registerLocationHandlers } from "./locationHandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
@@ -169,6 +170,10 @@ export const initSocketServer = async (httpServer) => {
     }
     connectedUsers.get(userId).add(socket.id);
 
+    //Joining personal room for direct messages and status updates
+    const personalRoom = `app-user:${userId}`;
+    await socket.join(personalRoom);
+
     socket.on("join:room", async (payload) => {
       const { roomId } = JSON.parse(payload);
       
@@ -188,7 +193,7 @@ export const initSocketServer = async (httpServer) => {
       console.log(`Sockets in room ${roomId}:`, clients);
     });
 
-
+    // Register event handlers for trusted contact requests
     await ChatService.updateUserOnlineStatus(socket.userId, true);
 
     //Register chat-related event handlers
@@ -201,6 +206,8 @@ export const initSocketServer = async (httpServer) => {
     registerPresenceHandlers(io, socket);
     //Register trusted contact-related event handlers
     registerTrustedContactHandler(io, socket);
+    //Register location-related event handlers
+    registerLocationHandlers(io, socket);
 
     // Notify contacts that user is online
     socket.broadcast.emit("user:online", { userId, userName });

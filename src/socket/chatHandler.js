@@ -1,5 +1,4 @@
 import moment from "moment";
-import { getSocketIdsForUser } from "./index.js";
 import ChatService from "../services/chat.service.js";
 import { promisify } from "../libraries/utility.js";
 import UserService from "../services/user.service.js";
@@ -82,18 +81,15 @@ export const registerChatHandlers = (io, socket) => {
       console.log(`EMITTING MESSAGE TO ROOM: ${roomId}`);
 
       // Emit message to recipient's rooms
+      console.log(`Emitting message:new to room ${roomId} with message:`, message);
       io.to(`${roomId}`).emit("message:new", message);
-      const senderSockets = getSocketIdsForUser(socket.userId);
-      for (const sid of senderSockets) {
-        if (sid !== socket.id) {
-          io.to(sid).emit("message:new", { ...message, isSelf: true });
-        }
-      }
       if (typeof ack === "function") {
         ack({ success: true, message });
       }
-      const recipientSockets = getSocketIdsForUser(recipientId);
+      const recipientSockets =   await io.in(`app-user:${recipientId}`).allSockets();
+      console.log("Recipient sockets:", recipientSockets);
       if (recipientSockets.size > 0) {
+        console.log(`User ${recipientId} is online. Marking message as delivered.`);
         await dbMessage.update({ status: "delivered" });
         // Notify sender that message was delivered
         io.to(`${roomId}`).emit("message:status", {
