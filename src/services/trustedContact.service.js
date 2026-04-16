@@ -130,14 +130,14 @@ export default class TrustedContactService {
             model: User,
             as: "trusted_contact",
             where: { is_active: true },
-            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
+            attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
             required: true,
           },
           {
             model: User,
             as: "inviter",
             where: { is_active: true },
-            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
+            attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
             required: true,
           },
         ],
@@ -596,6 +596,26 @@ export default class TrustedContactService {
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("COUNT_TRUSTED_CONTACTS_FAILED"), null);
     }
+  }
+
+  static async   getLocationShareContactIds(userId) {
+      const contacts = await TrustedContacts.findAll({
+          where: {
+              status: "accepted",
+              // share_location: true,
+              // eslint-disable-next-line import/no-named-as-default-member
+              [db.Sequelize.Op.or]: [
+                  { user_id: userId },
+                  { trusted_user_id: userId },
+              ],
+          },
+          attributes: ["user_id", "trusted_user_id"],
+      });
+      return contacts.map((c) =>
+          Number(c.user_id) === Number(userId)
+              ? Number(c.trusted_user_id)
+              : Number(c.user_id)
+      );
   }
 
   static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {

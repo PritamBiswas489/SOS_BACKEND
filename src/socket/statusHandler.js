@@ -2,6 +2,7 @@ import ChatService from "../services/chat.service.js";
 export const registerStatusHandlers = (io, socket) => {
   // Handler for message delivery status updates
   socket.on("message:delivered", async (payload) => {
+    try {
     console.log("[Status] Received message:delivered for payload:", payload);
     const { messageId, senderId } = JSON.parse(payload);
     if (!messageId || !senderId) return;
@@ -30,9 +31,13 @@ export const registerStatusHandlers = (io, socket) => {
       updatedBy: socket.userId,
       timestamp: new Date().toISOString(),
     });
+    } catch (err) {
+      console.error("[Status] message:delivered error", err);
+    }
   });
   // Similar handler for "message:read" event
   socket.on("message:read", async (payload) => {
+    try {
     console.log("[Status]dd Received message:read for payload:", payload);
     const { messageIds, senderId } = JSON.parse(payload);
     if (!messageIds || !senderId) return;
@@ -62,6 +67,9 @@ export const registerStatusHandlers = (io, socket) => {
         updatedBy: socket.userId,
         timestamp: new Date().toISOString(),
       });
+    }
+    } catch (err) {
+      console.error("[Status] message:read error", err);
     }
   });
   

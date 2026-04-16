@@ -12,6 +12,7 @@
  */
 export const registerTypingHandlers = (io, socket) => {
   socket.on('typing:start', (payload) => {
+    try {
     console.log('Received typing:start event with payload:', payload);
     
     const {  roomId } = JSON.parse(payload);
@@ -21,9 +22,13 @@ export const registerTypingHandlers = (io, socket) => {
       roomId,
     };
     io.to(`${roomId}`).emit('typing:start', { ...typingData, chatWith: socket.userId });
+    } catch (err) {
+      console.error('[Socket] typing:start error', err);
+    }
   });
 
   socket.on('typing:stop', (payload) => {
+    try {
     const {  roomId } = JSON.parse(payload);
     const typingData = {
       userId: socket.userId,
@@ -31,5 +36,8 @@ export const registerTypingHandlers = (io, socket) => {
       roomId,
     };
     io.to(`${roomId}`).emit('typing:stop', { ...typingData, chatWith: socket.userId });
+    } catch (err) {
+      console.error('[Socket] typing:stop error', err);
+    }
   });
 };

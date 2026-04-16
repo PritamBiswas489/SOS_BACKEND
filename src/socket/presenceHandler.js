@@ -15,6 +15,7 @@ export const registerPresenceHandlers = (io, socket) => {
 //     "userIds": ["22","23"]
 // }
   socket.on("presence:subscribe", (payload, ack) => {
+    try {
     const { userIds } = JSON.parse(payload);
     if (!Array.isArray(userIds)) return;
     const connectedUsers = getConnectedUsers();
@@ -27,6 +28,10 @@ export const registerPresenceHandlers = (io, socket) => {
 
     if (typeof ack === "function") {
       ack?.(statuses);
+    }
+    } catch (err) {
+      console.error('[Socket] presence:subscribe error', err);
+      if (typeof ack === "function") ack([]);
     }
   });
   /**

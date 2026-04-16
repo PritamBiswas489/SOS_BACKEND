@@ -70,6 +70,7 @@ export default async (req, res, next) => {
 					name: data.name,
 					email: data.email,
 					role: data.role,
+					profile_photo: data.profile_photo
 				};
 
 				const getUserById = await UserService.getUserById(data.id);

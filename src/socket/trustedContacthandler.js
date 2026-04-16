@@ -10,7 +10,13 @@ export const registerTrustedContactHandler = (io, socket) => {
     const lang = socket?.handshake?.headers?.["x-api-language"] || "en";
     i18n.setLocale(lang);
     const t = i18n;
-    const payload = JSON.parse(requestData);
+    let payload;
+    try {
+      payload = JSON.parse(requestData);
+    } catch (err) {
+      if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
+      return;
+    }
     // Validate input data
     const insertedData = {
       name: payload?.name,
@@ -76,8 +82,15 @@ export const registerTrustedContactHandler = (io, socket) => {
     }
   });
   socket.on("accept:trustedContactRequest", async (payload, ack) => {
+    try {
     const userId = socket.userId;
-    const acceptData = JSON.parse(payload);
+    let acceptData;
+    try {
+      acceptData = JSON.parse(payload);
+    } catch (err) {
+      if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
+      return;
+    }
 
     const accept = await promisify(
       TrustedContactService.acceptTrustedContactInvitation.bind(
@@ -110,10 +123,21 @@ export const registerTrustedContactHandler = (io, socket) => {
         });
       }
     }
+    } catch (err) {
+      console.error("[Socket] accept:trustedContactRequest error", err);
+      if (typeof ack === "function") return ack({ success: false, message: i18n.__("ACCEPT_INVITATION_FAILED") });
+    }
   });
   socket.on("delete:trustedContactRequest", async (payload, ack) => {
+    try {
     const userId = socket.userId;
-    const rejectData = JSON.parse(payload);
+    let rejectData;
+    try {
+      rejectData = JSON.parse(payload);
+    } catch (err) {
+      if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
+      return;
+    }
     const reject = await promisify(
       TrustedContactService.deleteTrustedContactInvitation.bind(
         TrustedContactService,
@@ -144,6 +168,10 @@ export const registerTrustedContactHandler = (io, socket) => {
           message: i18n.__("REJECT_INVITATION_SUCCESSFUL"),
         });
       }
+    }
+    } catch (err) {
+      console.error("[Socket] delete:trustedContactRequest error", err);
+      if (typeof ack === "function") return ack({ success: false, message: i18n.__("REJECT_INVITATION_FAILED") });
     }
   });
 };

@@ -159,6 +159,7 @@ export default class LoginController {
           name: user.name,
           email: user.email,
           role: user.role,
+          profile_photo: user.profile_photo,
         };
       } else {
         const newUser = await User.create({ phone_number: phoneNumber,  role });
@@ -168,6 +169,7 @@ export default class LoginController {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          profile_photo: newUser.profile_photo,
         };
       }
       const accessToken = await generateToken(

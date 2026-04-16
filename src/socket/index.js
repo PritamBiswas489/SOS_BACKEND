@@ -171,8 +171,16 @@ export const initSocketServer = async (httpServer) => {
     connectedUsers.get(userId).add(socket.id);
 
     //Joining personal room for direct messages and status updates
-    const personalRoom = `app-user:${userId}`;
-    await socket.join(personalRoom);
+    
+
+    socket.on('join:personal', async () => {
+      const personalRoom = `app-user:${userId}`;
+      await socket.join(personalRoom);
+      socket.emit('personal:room:joined', { room: personalRoom });
+   });
+
+    
+     
 
     socket.on("join:room", async (payload) => {
       const { roomId } = JSON.parse(payload);
@@ -194,7 +202,11 @@ export const initSocketServer = async (httpServer) => {
     });
 
     // Register event handlers for trusted contact requests
-    await ChatService.updateUserOnlineStatus(socket.userId, true);
+    try {
+      await ChatService.updateUserOnlineStatus(socket.userId, true);
+    } catch (err) {
+      console.error(`❌ Failed to update online status for user ${userId}:`, err);
+    }
 
     //Register chat-related event handlers
     registerChatHandlers(io, socket);
