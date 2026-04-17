@@ -161,7 +161,7 @@ export const initSocketServer = async (httpServer) => {
       socket.emit("token:refreshed", {
         accessToken: socket.newAccessToken,
         refreshToken: socket.newRefreshToken,
-      });
+      }); 
     }
 
     // Track connected sockets per user (multi-device support)
