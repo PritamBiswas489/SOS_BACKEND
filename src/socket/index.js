@@ -12,6 +12,7 @@ import { registerStatusHandlers } from "./statusHandler.js";
 import { registerPresenceHandlers } from "./presenceHandler.js";
 import { registerTrustedContactHandler } from "./trustedContacthandler.js";
 import { registerLocationHandlers } from "./locationHandler.js";
+import { registerMediaSoupHandler } from "./mediaSoupHandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
@@ -170,9 +171,9 @@ export const initSocketServer = async (httpServer) => {
     }
     connectedUsers.get(userId).add(socket.id);
 
-    //Joining personal room for direct messages and status updates
     
-
+    
+   //Joining personal room for direct messages and status updates
     socket.on('join:personal', async () => {
       const personalRoom = `app-user:${userId}`;
       await socket.join(personalRoom);
@@ -220,6 +221,8 @@ export const initSocketServer = async (httpServer) => {
     registerTrustedContactHandler(io, socket);
     //Register location-related event handlers
     registerLocationHandlers(io, socket);
+    //Register media SOAP-related event handlers
+    registerMediaSoupHandler(io, socket);
 
     // Notify contacts that user is online
     socket.broadcast.emit("user:online", { userId, userName });
@@ -230,11 +233,14 @@ export const initSocketServer = async (httpServer) => {
       if (sockets) {
         sockets.delete(socket.id);
         if (sockets.size === 0) {
+          console.log(`User ${userName} (${userId}) has no more active sockets. Marking as offline.`);
           connectedUsers.delete(userId);
             await ChatService.updateUserOnlineStatus(socket.userId, false);
 
           // Only broadcast offline when ALL devices disconnect
           io.emit('user:offline', { userId, lastSeen: new Date().toISOString() });
+        }else{
+          console.log(`User ${userName} (${userId}) still has active sockets:`, sockets);
         }
       }
     });
