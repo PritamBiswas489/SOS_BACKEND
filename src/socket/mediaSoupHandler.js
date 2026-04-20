@@ -113,11 +113,11 @@ async function startRecording(room, roomId) {
       return;
     }
 
-    fs.mkdirSync(SOS_AUDIO_DIR, { recursive: true });
+    fs.mkdirSync(SOS_AUDIO_DIR, { recursive: true, mode: 0o755 });
 
     // Allocate two ports: one for RTP, one for RTCP
-    const rtpPort  = await getFreePort();
-    const rtcpPort = await getFreePort();
+    const rtpPort = await getFreePort();
+    const rtcpPort = rtpPort + 1;
 
     const timestamp  = Date.now();
     const outputFile = path.join(SOS_AUDIO_DIR, `${roomId}-${timestamp}.mp3`);
@@ -161,19 +161,19 @@ async function startRecording(room, roomId) {
     console.log(`[recording:${roomId}] RTP:${rtpPort}  RTCP:${rtcpPort}`);
 
     // FIX 1 — spawn ffmpeg FIRST (so it starts binding the UDP socket)
-    const ffmpegProcess = spawn(FFMPEG_BIN, [
-      "-loglevel",           "warning",
-      "-protocol_whitelist", "file,rtp,udp,crypto",
-      "-i",                  sdpPath,
-      "-vn",
-      "-acodec",             "libmp3lame",
-      "-ab",                 "128k",
-      "-ar",                 "44100",
-      "-ac",                 "2",
-      "-f",                  "mp3",
-      "-y",
-      outputFile,
-    ], { stdio: ["pipe", "pipe", "pipe"] });
+     const ffmpegProcess = spawn(FFMPEG_BIN, [
+          "-loglevel",           "warning",
+          "-protocol_whitelist", "file,rtp,udp,crypto",
+          "-i",                  sdpPath,
+          "-vn",
+          "-acodec",             "libmp3lame",
+          "-ab",                 "128k",
+          "-ar",                 "44100",
+          "-ac",                 "2",
+          "-f",                  "mp3",
+          "-y",
+          outputFile,
+        ], { stdio: ["pipe", "pipe", "pipe"] });
 
     ffmpegProcess.stderr.on("data", (d) =>
       console.log(`[ffmpeg:${roomId}] ${d.toString().trim()}`)
