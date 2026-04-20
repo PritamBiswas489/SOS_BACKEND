@@ -47,7 +47,7 @@
     "jsqr": "^1.4.0",
     "libphonenumber-js": "^1.12.13",
     "luxon": "^3.7.1",
-    "mediasoup": "^3.19.19",
+    "mediasoup": "^3.19.3",
     "moment": "^2.30.1",
     "moment-timezone": "^0.6.0",
     "multer": "^2.0.1",
