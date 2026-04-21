@@ -4,8 +4,10 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import net from "net";
+import os from "os";
 import { fileURLToPath } from "url";
 import { createSocket as createUdpSocket } from "dgram";
+import { getProfileImage } from "../libraries/utility.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,8 +122,8 @@ async function startRecording(room, roomId) {
     const rtcpPort = rtpPort + 1;
 
     const timestamp  = Date.now();
-    const outputFile = path.join(SOS_AUDIO_DIR, `${roomId}-${timestamp}.mp3`);
-    const sdpPath    = path.join(SOS_AUDIO_DIR, `${roomId}-${timestamp}.sdp`);
+    const outputFile = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.mp3`);
+    const sdpPath    = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.sdp`);
 
     // rtcpMux:false — ffmpeg needs separate RTP + RTCP ports
     const plainTransport = await room.router.createPlainTransport({ 
@@ -250,40 +252,83 @@ function stopRecording(room, roomId) {
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-let worker; // single mediasoup worker — created once
 const rooms = {}; // roomId → { router, creatorId, producer, transports: {}, recording: null }
 // transports[socketId] = { sendTransport?, recvTransport?, producer?, consumer? }
 
-// ─── Bootstrap mediasoup worker (eager — runs at module load) ───────────────
-// Initialized immediately so socket event handlers are always ready when the
-// first connection arrives. Storing the promise guards against concurrent calls.
+// ─── NOTE ON SCALE ────────────────────────────────────────────────────────────
+// `rooms` is in-process memory. Capacity is bounded by:
+//   • RTC port range  : MEDIASOUP_RTC_MIN_PORT–MEDIASOUP_RTC_MAX_PORT
+//                       Each transport uses 2 ports. Widen the range in .env for more capacity.
+//   • RAM             : Each room holds a Router + N transports + ffmpeg process.
+//   • Single worker   : For high concurrency, create one worker per CPU core and
+//                       round-robin room creation across workers.
+// ─────────────────────────────────────────────────────────────────────────────
 
-let _workerPromise = null;
+// ─── Multi-worker pool ───────────────────────────────────────────────────────
 
-async function ensureWorker() {
-  if (worker) return;
-  if (!_workerPromise) {
-    _workerPromise = mediasoup
-      .createWorker({
-        logLevel: "warn",
-        rtcMinPort: Number(process.env.MEDIASOUP_RTC_MIN_PORT) || 10000,
-        rtcMaxPort: Number(process.env.MEDIASOUP_RTC_MAX_PORT) || 10100,
-      })
-      .then((w) => {
-        worker = w;
-        worker.on("died", () => {
-          console.error("❌ mediasoup worker died — exiting");
-          process.exit(1);
-        });
-        console.log("✅ mediasoup worker ready, pid:", worker.pid);
-      });
+const NUM_WORKERS = Number(process.env.MEDIASOUP_NUM_WORKERS) || os.cpus().length;
+const workers = []; // pool of mediasoup workers
+let workerIndex = 0; // round-robin cursor
+
+async function createWorkerPool() {
+  const minPort = Number(process.env.MEDIASOUP_RTC_MIN_PORT) || 10000;
+  const maxPort = Number(process.env.MEDIASOUP_RTC_MAX_PORT) || 59999;
+  // Divide the port range evenly across workers
+  const portRange = Math.floor((maxPort - minPort) / NUM_WORKERS);
+
+  for (let i = 0; i < NUM_WORKERS; i++) {
+    const workerMinPort = minPort + i * portRange;
+    const workerMaxPort = i === NUM_WORKERS - 1 ? maxPort : workerMinPort + portRange - 1;
+
+    const w = await mediasoup.createWorker({
+      logLevel: "warn",
+      rtcMinPort: workerMinPort,
+      rtcMaxPort: workerMaxPort,
+    });
+
+    w.on("died", () => {
+      console.error(`❌ mediasoup worker[${i}] died — restarting`);
+      workers[i] = null;
+      // Respawn replacement worker with the same port slice
+      mediasoup.createWorker({ logLevel: "warn", rtcMinPort: workerMinPort, rtcMaxPort: workerMaxPort })
+        .then((replacement) => {
+          replacement.on("died", () => process.exit(1));
+          workers[i] = replacement;
+          console.log(`✅ mediasoup worker[${i}] restarted, pid:`, replacement.pid);
+        })
+        .catch(() => process.exit(1));
+    });
+
+    workers.push(w);
+    console.log(`✅ mediasoup worker[${i}] ready, pid: ${w.pid} ports: ${workerMinPort}-${workerMaxPort}`);
   }
-  await _workerPromise;
 }
 
-// Start worker immediately at module load so it is ready before any connection
+/** Pick the next healthy worker in round-robin order. */
+function getNextWorker() {
+  // Skip any dead (null) worker slots
+  for (let attempt = 0; attempt < workers.length; attempt++) {
+    const w = workers[workerIndex % workers.length];
+    workerIndex++;
+    if (w) return w;
+  }
+  throw new Error("No healthy mediasoup workers available");
+}
+
+// ─── Bootstrap mediasoup worker pool (eager — runs at module load) ───────────
+
+let _workerPoolPromise = null;
+
+async function ensureWorker() {
+  if (!_workerPoolPromise) {
+    _workerPoolPromise = createWorkerPool();
+  }
+  await _workerPoolPromise;
+}
+
+// Start workers immediately at module load
 ensureWorker().catch((err) =>
-  console.error("❌ Failed to initialise mediasoup worker:", err)
+  console.error("❌ Failed to initialise mediasoup workers:", err)
 );
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -309,7 +354,8 @@ function ensureTransportSlot(roomId, socketId) {
   return room.transports[socketId];
 }
 
-function cleanupSocket(socketId, io) {
+function cleanupSocket(socket, io) {
+  const socketId = socket.id;
   for (const [roomId, room] of Object.entries(rooms)) {
     if (!room.transports[socketId]) continue;
 
@@ -323,6 +369,18 @@ function cleanupSocket(socketId, io) {
       room.producer = null;
       room.creatorId = null;
       io.to(roomId).emit("creator-left");
+    }
+
+    // Notify creator when a listener leaves
+    if (room.creatorId && room.creatorId !== socketId) {
+      io.to(room.creatorId).emit("listener-left", { 
+        socketId,
+        userId: socket.userId,
+        userName: socket.userName,
+        profilePhoto: getProfileImage(socket.profilePhoto),
+        phoneNumber: socket.phoneNumber,
+
+       });
     }
 
     if (slot.consumer) slot.consumer.close();
@@ -351,12 +409,13 @@ export const registerMediaSoupHandler = async (io, socket) => {
   // ── Disconnect cleanup ──────────────────────────────────────────────────
   socket.on("disconnect", () => {
     console.log(`[MediaSoup] Socket disconnected: ${socket.id}`);
-    cleanupSocket(socket.id, io);
+     
+    cleanupSocket(socket, io);
   });
 
   // ── Join room ────────────────────────────────────────────────────────────
   // Both creator and listener call this first
-  socket.on("ms:join-room", async ({ roomId, role }, callback) => {
+  socket.on("ms:join-room", async ({ roomId, role, sosId = 0 }, callback) => {
      console.log(
         `User ${socket.userName} with ID ${socket.userId} joined room ${roomId} as ${role}`,
       );
@@ -366,7 +425,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
      
 
       if (!room.router) {
-        room.router = await worker.createRouter({ mediaCodecs });
+        room.router = await getNextWorker().createRouter({ mediaCodecs });
         console.log(`✅ mediasoup router created for room ${roomId}`);
       }
 
@@ -384,16 +443,27 @@ export const registerMediaSoupHandler = async (io, socket) => {
           }
           room.producer = null;
           room.creatorId = null; 
+          
           io.to(roomId).emit("creator-left");
         }
+        room.sosId = sosId;
         room.creatorId = socket.id;
       }
-
       callback({
         rtpCapabilities: room.router.rtpCapabilities,
         isCreator: role === "creator",
         hasProducer: !!room.producer,
       });
+
+      if (role === "listener") {
+          io.to(room.creatorId).emit("listener-joined", {
+            socketId: socket.id,
+            userName: socket.userName,
+            userId: socket.userId,
+            profilePhoto: getProfileImage(socket.profilePhoto),
+            phoneNumber: socket.phoneNumber,
+          });
+      }
     } catch (err) {
       console.error("❌ ms:join-room error", err);
       callback({ error: err.message });

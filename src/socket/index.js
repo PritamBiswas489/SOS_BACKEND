@@ -114,6 +114,7 @@ export const initSocketServer = async (httpServer) => {
 					name: decoded.name,
 					email: decoded.email,
 					role: decoded.role,
+          profile_photo: decoded.profile_photo,
         };
 
         newAccessToken = await generateToken(payload, JWT_ALGO, ACCESS_TOKEN_SECRET_KEY, Number(ACCESS_TOKEN_EXPIRES_IN));
@@ -139,6 +140,8 @@ export const initSocketServer = async (httpServer) => {
       console.log("decoded", decoded);
       socket.userId = decoded.id;
       socket.userName = decoded.name || decoded.phoneNumber;
+      socket.profilePhoto = decoded.profile_photo;
+      socket.phoneNumber = decoded.phoneNumber;
 
       // If tokens were refreshed, emit new tokens to the client after connection
       if (newAccessToken && newRefreshToken) {
@@ -152,7 +155,7 @@ export const initSocketServer = async (httpServer) => {
     }
   });
   io.on("connection", async (socket) => {
-    const { userId, userName } = socket;
+    const { userId, userName, profilePhoto, phoneNumber } = socket;
     console.log(
       `🔌 [Socket] User connected: ${userName} (${userId}) — socket ${socket.id}`,
     );

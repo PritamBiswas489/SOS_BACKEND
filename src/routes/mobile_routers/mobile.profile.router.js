@@ -130,7 +130,7 @@ router.post("/delete-device-token", async (req, res) => {
  */
 router.post("/update", uploadProfileImage.single('profile_image'), async (req, res) => {
     const profileImagePath = req.file 
-      ? `/uploads/images/${req.file.filename}`
+      ? `/uploads/profile_images/${req.file.filename}`
       : null;
     
     const response = await ProfileController.updateProfile({

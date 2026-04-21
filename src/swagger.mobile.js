@@ -34,6 +34,10 @@ const options = {
         name: "Redis testing routes",
         description: "Endpoints for Redis cache management",
       },
+      {
+        name: "SOS routes",
+        description: "Endpoints for SOS session management",
+      },
     ],
     servers: [
       {

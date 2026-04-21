@@ -6,6 +6,7 @@ import logger from "../config/winston.js";
 import moment from "moment-timezone";
 import fs from "fs";
 import path from "path";
+import { getProfileImage } from "../libraries/utility.js";
  
 
 const { Op, User, Licenses, Devices } = db;
@@ -55,14 +56,7 @@ export default class UserService {
       }
       const userAvatafrUrl = user.profile_photo;
       //check image exists in uploads folder if not set default avatar
-      if (userAvatafrUrl) {
-        const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(userAvatafrUrl));
-        if (!fs.existsSync(imagePath)) {
-          user.profile_photo = null; // or set to a default avatar URL if you have one
-        }else{
-          user.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(userAvatafrUrl)}`;
-        }
-      }
+      user.profile_photo = getProfileImage(userAvatafrUrl);
       return callback(null, user);
     } catch (error) {
       console.error("Error fetching user profile:", error);

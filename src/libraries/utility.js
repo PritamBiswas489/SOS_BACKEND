@@ -3,6 +3,7 @@ import fs from 'fs';
 import moment from "moment-timezone";
 import "../config/environment.js";
 import crypto from 'crypto';
+import path from 'path';
 import {
   isValidPhoneNumber,
   parsePhoneNumberFromString,
@@ -307,6 +308,23 @@ export function promisify(fn, ...args) {
             resolve(result);
         });
     });
+}
+
+export function getProfileImage(folderpath) {
+  if (folderpath) {
+    const imagePath = path.join(
+      process.cwd(),
+      "uploads",
+      "profile_images",
+      path.basename(folderpath),
+    );
+    if (!fs.existsSync(imagePath)) {
+      return null; // or set to a default avatar URL if you have one
+    } else {
+      return `${process.env.BASE_URL}/uploads/profile_images/${path.basename(folderpath)}`;
+    }
+  }
+  return null; // or set to a default avatar URL if you have one
 }
 
 

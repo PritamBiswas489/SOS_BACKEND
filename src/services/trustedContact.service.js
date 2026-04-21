@@ -8,6 +8,7 @@ import { enqueueBulk } from "../queues/notificationQueue.js";
 import { promisify } from "../libraries/utility.js";
 import path from "path";
 import fs from "fs";
+import { getProfileImage } from "../libraries/utility.js";
 
 export default class TrustedContactService {
   //send trusted contact invitation
@@ -145,23 +146,10 @@ export default class TrustedContactService {
         const friendsData = friends.map((friend) => {
           const friendData = friend.toJSON();
           const trustedContactProfilePhoto = friendData.trusted_contact?.profile_photo;
-          if (trustedContactProfilePhoto) {
-            const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(trustedContactProfilePhoto));
-            if (!fs.existsSync(imagePath)) {
-              friendData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
-            }else{
-              friendData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(trustedContactProfilePhoto)}`;
-            }
-          }
+           friendData.trusted_contact.profile_photo = getProfileImage(trustedContactProfilePhoto);
           const inviterProfilePhoto = friendData.inviter?.profile_photo;
-          if (inviterProfilePhoto) {
-            const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(inviterProfilePhoto));
-            if (!fs.existsSync(imagePath)) {
-              friendData.inviter.profile_photo = null; // or set to a default avatar URL if you have one
-            }else{
-              friendData.inviter.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(inviterProfilePhoto)}`;
-            }
-          } 
+          friendData.inviter.profile_photo = getProfileImage(inviterProfilePhoto);
+          
           return friendData;
         });
       return callback(null, { data: friendsData });
@@ -302,14 +290,7 @@ export default class TrustedContactService {
       const data = pendingInvitations.rows.map((invitation) => {
         const invitationData = invitation.toJSON();
         const inviterProfilePhoto = invitationData.inviter?.profile_photo;
-        if (inviterProfilePhoto) {
-          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(inviterProfilePhoto));
-          if (!fs.existsSync(imagePath)) {
-            invitationData.inviter.profile_photo = null; // or set to a default avatar URL if you have one
-          }else{
-            invitationData.inviter.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(inviterProfilePhoto)}`;
-          }
-        }
+        invitationData.inviter.profile_photo = getProfileImage(inviterProfilePhoto);
         return invitationData;
       });
       return callback(null, { data: { rows: data, count: pendingInvitations.count } });
@@ -344,14 +325,7 @@ export default class TrustedContactService {
       const data = pendingInvitations.rows.map((invitation) => {
         const invitationData = invitation.toJSON();
         const trustedContactProfilePhoto = invitationData.trusted_contact?.profile_photo;
-        if (trustedContactProfilePhoto) {
-          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(trustedContactProfilePhoto));
-          if (!fs.existsSync(imagePath)) {
-            invitationData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
-          }else{
-            invitationData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(trustedContactProfilePhoto)}`;
-          }
-        }
+        invitationData.trusted_contact.profile_photo = getProfileImage(trustedContactProfilePhoto);
         return invitationData;
       });
       return callback(null, { data: { rows: data, count: pendingInvitations.count } });
@@ -396,12 +370,7 @@ export default class TrustedContactService {
         const contactData = contact.toJSON();
         if (contactData.trusted_contact && contactData.trusted_contact.profile_photo) {
           const userAvatafrUrl = contactData.trusted_contact.profile_photo;
-          const imagePath = path.join(process.cwd(), "uploads", "profile_images", path.basename(userAvatafrUrl));
-          if (!fs.existsSync(imagePath)) {
-            contactData.trusted_contact.profile_photo = null; // or set to a default avatar URL if you have one
-          }else{
-            contactData.trusted_contact.profile_photo = `${process.env.BASE_URL}/uploads/profile_images/${path.basename(userAvatafrUrl)}`;
-          }
+           contactData.trusted_contact.profile_photo = getProfileImage(userAvatafrUrl);
         }
         return contactData;
       });
