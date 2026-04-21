@@ -372,7 +372,19 @@ export const registerMediaSoupHandler = async (io, socket) => {
 
       if (role === "creator") {
         if (room.creatorId) {
-          return callback({ error: "Room already has a creator" });
+          // Clean up previous creator before replacing
+          const prevSlot = room.transports[room.creatorId];
+          stopRecording(room, roomId);
+          if (prevSlot) {
+            if (prevSlot.producer) prevSlot.producer.close();
+            if (prevSlot.consumer) prevSlot.consumer.close();
+            if (prevSlot.sendTransport) prevSlot.sendTransport.close();
+            if (prevSlot.recvTransport) prevSlot.recvTransport.close();
+            delete room.transports[room.creatorId];
+          }
+          room.producer = null;
+          room.creatorId = null; 
+          io.to(roomId).emit("creator-left");
         }
         room.creatorId = socket.id;
       }
@@ -540,7 +552,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       callback({
         id: consumer.id,
         producerId: room.producer.id,
-        kind: consumer.kind,
+        kind: consumer.kind, 
         rtpParameters: consumer.rtpParameters,
       });
     } catch (err) {

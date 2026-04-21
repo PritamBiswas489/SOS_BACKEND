@@ -142,6 +142,13 @@ const basePathSet = new Set([
       "chat-videos",
     )
   ),
+  path.resolve(
+    path.join(
+      path.dirname("./"),
+      "uploads",
+      "sos-audio",
+    )
+  ),
 
 
 ]); // Change to your base folder path
