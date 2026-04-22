@@ -3,7 +3,6 @@ import "../config/environment.js";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
-import net from "net";
 import os from "os";
 import { fileURLToPath } from "url";
 import { createSocket as createUdpSocket } from "dgram";
@@ -12,8 +11,10 @@ import { getProfileImage } from "../libraries/utility.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Directory where SOS audio recordings are saved
-const SOS_AUDIO_DIR = path.resolve(__dirname, "../../uploads/sos-audio"); 
+// Directory where SOS audio recordings are saved.
+// Override via SOS_AUDIO_DIR env var — avoids breakage if this file moves.
+const SOS_AUDIO_DIR =
+  process.env.SOS_AUDIO_DIR || path.resolve(__dirname, "../../uploads/sos-audio");
 
 // ffmpeg binary path — override via FFMPEG_PATH env var for custom installs
 // e.g. FFMPEG_PATH=/usr/local/bin/ffmpeg  or  FFMPEG_PATH=C:\ffmpeg\bin\ffmpeg.exe
@@ -60,33 +61,101 @@ const getWebRtcTransportOptions = () => ({
 
 // ─── Recording helpers ───────────────────────────────────────────────────────
 
-/** Allocate a free OS UDP port on 127.0.0.1. */
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.listen(0, "127.0.0.1", () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
-    });
-    srv.on("error", reject);
-  });
+/**
+ * Atomic RTP/RTCP port allocator.
+ *
+ * Why not getFreePort() (TCP probe + release)?
+ *   That has a TOCTOU race — the OS reclaims the port the moment we close the
+ *   TCP server, so another process can steal it before ffmpeg binds it.
+ *   On a busy server this causes silent recording failures.
+ *
+ * Why not rtpPort + 1 for RTCP?
+ *   getFreePort() only confirmed rtpPort was free — rtpPort+1 might be occupied
+ *   by something else entirely.
+ *
+ * This counter always advances in steps of 2 (RTP + RTCP together) within a
+ * dedicated range that nothing else on the server should touch.
+ * Set RTP_PORT_START / RTP_PORT_END in .env to match your firewall rules.
+ * Default: 40000–49998 (5000 recording slots — far more than MAX_ROOMS=200).
+ */
+const RTP_PORT_START = Number(process.env.RTP_PORT_START) || 40000;
+const RTP_PORT_END   = Number(process.env.RTP_PORT_END)   || 49998; // must be even
+let   _nextRtpPort   = RTP_PORT_START;
+
+function allocateRtpPort() {
+  const port = _nextRtpPort;
+  _nextRtpPort += 2; // claim RTP + RTCP in one step
+  if (_nextRtpPort > RTP_PORT_END) _nextRtpPort = RTP_PORT_START; // wrap around
+  return port; // caller uses port (RTP) and port+1 (RTCP) — both reserved atomically
 }
 
 /**
  * Wait until ffmpeg has bound its UDP socket on `port`.
- * Probes every 100 ms — far more reliable than a fixed setTimeout.
+ *
+ * Cross-platform strategy (works on both Windows dev and Linux production):
+ *
+ * PRIMARY  — UDP bind-probe (reliable on Linux):
+ *   Try to bind a UDP socket to 0.0.0.0 on the same port.
+ *   • EADDRINUSE → ffmpeg owns the port → ready ✅
+ *   • bind succeeds → still free → retry
+ *
+ * FALLBACK — ffmpeg stderr sentinel (reliable on Windows):
+ *   On Windows, UDP bind() does not reliably produce EADDRINUSE on 127.0.0.1.
+ *   ffmpeg prints specific lines to stderr once fully initialised and listening.
+ *   We watch for those in parallel — whichever probe resolves first wins.
  */
-function waitForUdpReady(port, timeoutMs = 6000) {
+function waitForUdpReady(port, ffmpegProcess, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
+    let settled = false;
     const deadline = Date.now() + timeoutMs;
+
+    function settle() {
+      if (settled) return;
+      settled = true;
+      if (ffmpegProcess) ffmpegProcess.stderr.off('data', onStderr);
+      resolve();
+    }
+
+    function fail(msg) {
+      if (settled) return;
+      settled = true;
+      if (ffmpegProcess) ffmpegProcess.stderr.off('data', onStderr);
+      reject(new Error(msg));
+    }
+
+    // ── FALLBACK: ffmpeg stderr sentinel ─────────────────────────────────────
+    // ffmpeg emits these lines once input is open and it is ready for RTP.
+    // Works on both Windows and Linux regardless of bind behaviour.
+    function onStderr(data) {
+      const line = data.toString();
+      if (
+        line.includes('Press [q] to stop') ||
+        line.includes('press [q] to stop') ||
+        line.includes('muxing overhead')   ||
+        line.includes('Output #0')
+      ) {
+        settle();
+      }
+    }
+    if (ffmpegProcess) ffmpegProcess.stderr.on('data', onStderr);
+
+    // ── PRIMARY: UDP bind-probe ───────────────────────────────────────────────
+    // Bind on 0.0.0.0 so the probe conflicts with ffmpeg regardless of which
+    // interface ffmpeg chose — fixes the 127.0.0.1 vs 0.0.0.0 mismatch on Windows.
     function probe() {
-      const sock = createUdpSocket("udp4");
-      sock.send(Buffer.from([0x00]), port, "127.0.0.1", (err) => {
-        sock.close();
-        if (!err) return resolve();
-        if (Date.now() > deadline)
-          return reject(new Error(`UDP port ${port} not ready after ${timeoutMs}ms`));
-        setTimeout(probe, 100);
+      if (settled) return;
+      if (Date.now() > deadline) return fail(`UDP port ${port} not ready after ${timeoutMs}ms`);
+
+      const sock = createUdpSocket('udp4');
+
+      sock.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') return settle(); // ffmpeg owns it ✅
+        try { sock.close(); } catch (_) {}
+        setTimeout(probe, 150);
+      });
+
+      sock.bind(port, () => {
+        sock.close(() => setTimeout(probe, 150));
       });
     }
     probe();
@@ -105,11 +174,16 @@ function waitForUdpReady(port, timeoutMs = 6000) {
  *  FIX 4 — SDP includes a=fmtp (required for Opus) and explicit a=rtcp: line.
  */
 async function startRecording(room, roomId) {
+  // These are tracked so the catch block can always clean them up on any error.
+  // Recording errors are fully isolated — they never affect the producer,
+  // consumers, or any listener transport.
+  let plainTransport  = null;
+  let recordingConsumer = null;
+  let ffmpegProcess   = null;
+  let sdpPath         = null;
+
   try {
     // ── Guard: must have a live producer before recording can start ──────────
-    // Recording is 100% independent of listeners — it taps directly from the
-    // producer via a server-side PlainTransport. No listener needs to be
-    // connected for this to work.
     if (!room.producer || room.producer.closed) {
       console.error(`[recording:${roomId}] No active producer — cannot start recording`);
       return;
@@ -117,31 +191,26 @@ async function startRecording(room, roomId) {
 
     fs.mkdirSync(SOS_AUDIO_DIR, { recursive: true, mode: 0o755 });
 
-    // Allocate two ports: one for RTP, one for RTCP
-    const rtpPort = await getFreePort();
+    const rtpPort  = allocateRtpPort();
     const rtcpPort = rtpPort + 1;
 
-    const timestamp  = Date.now();
     const outputFile = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.mp3`);
-    const sdpPath    = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.sdp`);
+    sdpPath          = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.sdp`);
 
     // rtcpMux:false — ffmpeg needs separate RTP + RTCP ports
-    const plainTransport = await room.router.createPlainTransport({ 
+    plainTransport = await room.router.createPlainTransport({
       listenIp : { ip: "127.0.0.1", announcedIp: null },
       rtcpMux  : false,
       comedia  : false,
     });
 
-    // Server-side consumer using router's OWN rtpCapabilities — NO listener needed.
-    // This is what makes recording listener-independent: we consume directly from
-    // the router, not from any client transport.
-    const recordingConsumer = await plainTransport.consume({
+    // Server-side consumer — router's own rtpCapabilities, no listener needed
+    recordingConsumer = await plainTransport.consume({
       producerId      : room.producer.id,
-      rtpCapabilities : room.router.rtpCapabilities,  // ← server caps, not client caps
+      rtpCapabilities : room.router.rtpCapabilities,
       paused          : true,
     });
 
-    // FIX 4 — complete SDP: a=fmtp for Opus + explicit a=rtcp port
     const codec = recordingConsumer.rtpParameters.codecs[0];
     const pt    = codec.payloadType;
 
@@ -159,29 +228,28 @@ async function startRecording(room, roomId) {
     ].join("\r\n") + "\r\n";
 
     fs.writeFileSync(sdpPath, sdp);
-    console.log(`[recording:${roomId}] SDP →\n${sdp}`);
     console.log(`[recording:${roomId}] RTP:${rtpPort}  RTCP:${rtcpPort}`);
 
-    // FIX 1 — spawn ffmpeg FIRST (so it starts binding the UDP socket)
-     const ffmpegProcess = spawn(FFMPEG_BIN, [
-          "-loglevel",           "warning",
-          "-protocol_whitelist", "file,rtp,udp,crypto",
-          "-i",                  sdpPath,
-          "-vn",
-          "-acodec",             "libmp3lame",
-          "-ab",                 "128k",
-          "-ar",                 "44100",
-          "-ac",                 "2",
-          "-f",                  "mp3",
-          "-y",
-          outputFile,
-        ], { stdio: ["pipe", "pipe", "pipe"] });
+    // Spawn ffmpeg FIRST so it starts binding its UDP socket
+    ffmpegProcess = spawn(FFMPEG_BIN, [
+      "-loglevel",           "warning",
+      "-protocol_whitelist", "file,rtp,udp,crypto",
+      "-i",                  sdpPath,
+      "-vn",
+      "-acodec",             "libmp3lame",
+      "-ab",                 "128k",
+      "-ar",                 "44100",
+      "-ac",                 "2",
+      "-f",                  "mp3",
+      "-y",
+      outputFile,
+    ], { stdio: ["pipe", "pipe", "pipe"] });
 
     ffmpegProcess.stderr.on("data", (d) =>
       console.log(`[ffmpeg:${roomId}] ${d.toString().trim()}`)
     );
     ffmpegProcess.on("error", (err) =>
-      console.error(`❌ ffmpeg error for room ${roomId}:`, err.message)
+      console.error(`❌ ffmpeg spawn error for room ${roomId}:`, err.message)
     );
     ffmpegProcess.on("close", (code) => {
       const size = fs.existsSync(outputFile) ? fs.statSync(outputFile).size : 0;
@@ -189,21 +257,41 @@ async function startRecording(room, roomId) {
       try { fs.unlinkSync(sdpPath); } catch (_) {}
     });
 
-    // FIX 1 — wait until ffmpeg's UDP socket is actually bound, THEN connect
-    await waitForUdpReady(rtpPort);
+    // Wait until ffmpeg is ready (cross-platform — see function jsdoc)
+    await waitForUdpReady(rtpPort, ffmpegProcess);
     console.log(`[recording:${roomId}] ffmpeg UDP ready — connecting transport`);
 
-    // Now connect plainTransport so mediasoup knows where to send RTP
     await plainTransport.connect({ ip: "127.0.0.1", port: rtpPort, rtcpPort });
-
-    // Finally resume — RTP starts flowing into ffmpeg
     await recordingConsumer.resume();
     console.log(`[recording:${roomId}] Consumer resumed — RTP flowing ✅`);
 
+    // Only set room.recording after everything succeeded
     room.recording = { ffmpegProcess, plainTransport, recordingConsumer, outputFile };
     console.log(`🎙 Recording started for room ${roomId} → ${outputFile}`);
+
   } catch (err) {
-    console.error(`❌ startRecording error for room ${roomId}:`, err);
+    // ── Isolated recording cleanup ────────────────────────────────────────────
+    // Any error here is fully contained. The producer, send transport, and all
+    // listener consumers are completely unaffected — streaming continues normally.
+    console.error(`❌ [recording:${roomId}] Recording failed — streaming continues:`, err.message);
+
+    // Kill ffmpeg if it was spawned
+    if (ffmpegProcess) {
+      try { ffmpegProcess.stdin.write('q\n'); ffmpegProcess.stdin.end(); } catch (_) {}
+      setTimeout(() => {
+        try { ffmpegProcess.kill('SIGKILL'); } catch (_) {}
+      }, 3000);
+    }
+
+    // Close mediasoup recording resources
+    try { if (recordingConsumer && !recordingConsumer.closed) recordingConsumer.close(); } catch (_) {}
+    try { if (plainTransport    && !plainTransport.closed)    plainTransport.close();    } catch (_) {}
+
+    // Clean up orphaned SDP file
+    if (sdpPath) { try { fs.unlinkSync(sdpPath); } catch (_) {} }
+
+    // Ensure room.recording stays null so stopRecording is a clean no-op
+    room.recording = null;
   }
 }
 
@@ -252,7 +340,7 @@ function stopRecording(room, roomId) {
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-const rooms = {}; // roomId → { router, creatorId, producer, transports: {}, recording: null }
+const rooms = {}; // roomId → { router, creatorId, producer, transports: {}, recording: null, lastActivity: number }
 // transports[socketId] = { sendTransport?, recvTransport?, producer?, consumer? }
 
 // ─── NOTE ON SCALE ────────────────────────────────────────────────────────────
@@ -263,6 +351,30 @@ const rooms = {}; // roomId → { router, creatorId, producer, transports: {}, r
 //   • Single worker   : For high concurrency, create one worker per CPU core and
 //                       round-robin room creation across workers.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Max concurrent rooms — prevents unbounded memory growth.
+// Override via MAX_ROOMS env var (e.g. MAX_ROOMS=500).
+const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 200;
+
+// Abandon TTL — destroy rooms with no transports after this many ms of inactivity.
+// Catches rooms where creator joined but never produced (router leak).
+const ROOM_TTL_MS = Number(process.env.ROOM_TTL_MS) || 5 * 60 * 1000; // 5 min default
+
+// Periodic TTL sweep — runs every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of Object.entries(rooms)) {
+    const isAbandoned =
+      Object.keys(room.transports).length === 0 &&
+      now - room.lastActivity > ROOM_TTL_MS;
+    if (isAbandoned) {
+      stopRecording(room, roomId);
+      if (room.router) room.router.close();
+      delete rooms[roomId];
+      console.log(`🗑️  mediasoup room ${roomId} destroyed (TTL expired)`);
+    }
+  }
+}, 60_000).unref(); // .unref() so the interval doesn't keep the process alive alone
 
 // ─── Multi-worker pool ───────────────────────────────────────────────────────
 
@@ -320,6 +432,10 @@ function getNextWorker() {
 let _workerPoolPromise = null;
 
 async function ensureWorker() {
+  // Always await the pool promise — a resolved Promise returns immediately
+  // so there is no overhead. Removing the workers.length check prevents a
+  // misleading early-return during a worker respawn window where length is
+  // still NUM_WORKERS but one slot is null.
   if (!_workerPoolPromise) {
     _workerPoolPromise = createWorkerPool();
   }
@@ -335,13 +451,20 @@ ensureWorker().catch((err) =>
 
 function getOrCreateRoom(roomId) {
   if (!rooms[roomId]) {
+    // Hard cap — reject new rooms when the limit is reached
+    if (Object.keys(rooms).length >= MAX_ROOMS) {
+      throw new Error(`Server at capacity — maximum ${MAX_ROOMS} concurrent rooms`);
+    }
     rooms[roomId] = {
       router: null,
       creatorId: null,
       producer: null,
       transports: {},
       recording: null,
+      lastActivity: Date.now(),
     };
+  } else {
+    rooms[roomId].lastActivity = Date.now();
   }
   return rooms[roomId];
 }
@@ -357,37 +480,43 @@ function ensureTransportSlot(roomId, socketId) {
 function cleanupSocket(socket, io) {
   const socketId = socket.id;
   for (const [roomId, room] of Object.entries(rooms)) {
-    if (!room.transports[socketId]) continue;
+    const slot      = room.transports[socketId];
+    const isCreator = room.creatorId === socketId;
 
-    const slot = room.transports[socketId];
+    // Previously: `if (!slot) continue` — this skipped rooms where the creator
+    // joined (router created) but disconnected before ms:create-transport was
+    // ever called, leaking the router and the room entry indefinitely.
+    // Fix: also enter cleanup if this socket is the creatorId, slot or not.
+    if (!slot && !isCreator) continue;
 
-    // Close producer if this socket is the creator
-    if (room.creatorId === socketId) {
-      // Stop recording first so ffmpeg flushes the file before transport closes
+    // Close producer/recording if this socket is the creator
+    if (isCreator) {
       stopRecording(room, roomId);
-      if (slot.producer) slot.producer.close();
-      room.producer = null;
+      if (slot?.producer) slot.producer.close();
+      room.producer  = null;
       room.creatorId = null;
-      io.to(roomId).emit("creator-left");
+      io.to(roomId).emit('creator-left');
     }
 
     // Notify creator when a listener leaves
     if (room.creatorId && room.creatorId !== socketId) {
-      io.to(room.creatorId).emit("listener-left", { 
+      io.to(room.creatorId).emit('listener-left', {
         socketId,
-        userId: socket.userId,
-        userName: socket.userName,
+        userId:       socket.userId,
+        userName:     socket.userName,
         profilePhoto: getProfileImage(socket.profilePhoto),
-        phoneNumber: socket.phoneNumber,
-
-       });
+        phoneNumber:  socket.phoneNumber,
+      });
     }
 
-    if (slot.consumer) slot.consumer.close();
-    if (slot.sendTransport) slot.sendTransport.close();
-    if (slot.recvTransport) slot.recvTransport.close();
-
-    delete room.transports[socketId];
+    // Close transport resources if the slot exists
+    // (slot may be undefined if creator left before ms:create-transport)
+    if (slot) {
+      if (slot.consumer)      slot.consumer.close();
+      if (slot.sendTransport) slot.sendTransport.close();
+      if (slot.recvTransport) slot.recvTransport.close();
+      delete room.transports[socketId];
+    }
 
     // Destroy room when empty
     if (Object.keys(room.transports).length === 0) {
@@ -455,7 +584,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
         hasProducer: !!room.producer,
       });
 
-      if (role === "listener") {
+      if (role === "listener" && room.creatorId) {
           io.to(room.creatorId).emit("listener-joined", {
             socketId: socket.id,
             userName: socket.userName,
@@ -558,11 +687,6 @@ export const registerMediaSoupHandler = async (io, socket) => {
         stopRecording(room, roomId);
         room.producer = null;
         io.to(roomId).emit("creator-left");
-      });
-
-      producer.on("score", (score) => {
-        // Optional: log producer score for debugging audio quality
-        // console.log(`[producer:${roomId}] score:`, score);
       });
 
       // Notify listeners that a producer is available (independent of recording)

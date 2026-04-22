@@ -16,6 +16,7 @@ import { registerMediaSoupHandler } from "./mediaSoupHandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
+import TrustedContactService from "../services/trustedContact.service.js";
 let io;
 const connectedUsers = new Map();
 
@@ -50,7 +51,15 @@ export const initSocketServer = async (httpServer) => {
     socket: {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
+       reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        console.error("❌ Redis pub: max retries reached — giving up");
+        return new Error("Redis max retries");
+      }
+      return Math.min(retries * 200, 3000); // wait up to 3s between retries
     },
+    },
+    
     username: process.env.REDIS_USERNAME || undefined,
     password: process.env.REDIS_PASSWORD || undefined,
     database: process.env.REDIS_DATABASE
@@ -70,6 +79,8 @@ export const initSocketServer = async (httpServer) => {
   subClient.on("error", (err) =>
     console.error("❌ Redis subClient error:", err),
   );
+  pubClient.on("disconnect", () => console.warn("⚠️ Redis pubClient disconnected"));
+  subClient.on("disconnect", () => console.warn("⚠️ Redis subClient disconnected"));
 
   await pubClient.connect();
   await subClient.connect();
@@ -228,8 +239,17 @@ export const initSocketServer = async (httpServer) => {
     registerMediaSoupHandler(io, socket);
 
     // Notify contacts that user is online
-    socket.broadcast.emit("user:online", { userId, userName });
-
+    const contactsids = await TrustedContactService.getLocationShareContactIds(socket.userId);
+    if(contactsids.length > 0){
+      //unique contact IDs to avoid duplicate notifications
+      const uniqueContactIds = [...new Set(contactsids)];
+       for (const contactId of uniqueContactIds) {
+        const contactRoom = `app-user:${contactId}`;
+        console.log(`Emitting user:online for ${socket.userName} (${socket.userId}) to contact ${contactId} in room ${contactRoom}`);
+        io.to(contactRoom).emit("user:online", { userId, userName, profilePhoto, phoneNumber });
+      }
+    }
+    
     socket.on('disconnect', async (reason) => {
       console.log(`[Socket] User disconnected: ${userName} (${userId}) — ${reason}`);
       const sockets = connectedUsers.get(userId);
@@ -238,7 +258,14 @@ export const initSocketServer = async (httpServer) => {
         if (sockets.size === 0) {
           console.log(`User ${userName} (${userId}) has no more active sockets. Marking as offline.`);
           connectedUsers.delete(userId);
-            await ChatService.updateUserOnlineStatus(socket.userId, false);
+            try {
+              await Promise.race([
+                ChatService.updateUserOnlineStatus(socket.userId, false),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+              ]);
+            } catch (err) {
+              console.error(`❌ Failed to mark user ${userId} offline:`, err.message);
+            }
 
           // Only broadcast offline when ALL devices disconnect
           io.emit('user:offline', { userId, lastSeen: new Date().toISOString() });
