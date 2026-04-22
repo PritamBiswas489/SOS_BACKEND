@@ -234,10 +234,13 @@ async function startRecording(room, roomId) {
     ffmpegProcess = spawn(FFMPEG_BIN, [
       "-loglevel",           "warning",
       "-protocol_whitelist", "file,rtp,udp,crypto",
+      "-fflags",             "+nobuffer",        // disable input buffering — avoids silent gap
+      "-analyzeduration",    "0",                // skip 5 s analysis delay — start decoding immediately
+      "-probesize",          "32",               // minimal probe size — no blank lead-in
       "-i",                  sdpPath,
       "-vn",
       "-acodec",             "libmp3lame",
-      "-ab",                 "128k",
+      "-b:a",                "128k",
       "-ar",                 "44100",
       "-ac",                 "2",
       "-f",                  "mp3",
