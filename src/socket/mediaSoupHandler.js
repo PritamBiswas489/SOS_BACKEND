@@ -314,7 +314,7 @@ function stopRecording(room, roomId) {
     // 1. Tell ffmpeg to flush and write MP3 trailer gracefully
     try {
       ffmpegProcess.stdin.write("q\n");
-      ffmpegProcess.stdin.end();
+      ffmpegProcess.stdin.end(); 
     } catch (_) {}
 
     // 2. Close mediasoup resources AFTER ffmpeg has exited
@@ -548,13 +548,15 @@ export const registerMediaSoupHandler = async (io, socket) => {
   // ── Join room ────────────────────────────────────────────────────────────
   // Both creator and listener call this first
   socket.on("ms:join-room", async ({ roomId, role, sosId = 0 }, callback) => {
+     
      console.log(
         `User ${socket.userName} with ID ${socket.userId} joined room ${roomId} as ${role}`,
       );
     try {
       socket.join(roomId);
       const room = getOrCreateRoom(roomId); 
-     
+
+       
 
       if (!room.router) {
         room.router = await getNextWorker().createRouter({ mediaCodecs });
@@ -754,6 +756,20 @@ export const registerMediaSoupHandler = async (io, socket) => {
       });
     } catch (err) {
       console.error("❌ ms:consume error", err);
+      callback({ error: err.message });
+    }
+  });
+  // ── Check if room has creator (for UI state) ─────────────────────────────
+  socket.on("ms:check-rooms-has-creator", async ({ roomIds }, callback) => {
+    try {
+      const result = {};
+      for (const roomId of roomIds) {
+        const room = rooms[roomId];
+        result[roomId] = !!(room && room.creatorId);
+      }
+      callback({ rooms: result });
+    } catch (err) {
+      console.error("❌ ms:check-room-has-creator error", err);
       callback({ error: err.message });
     }
   });
