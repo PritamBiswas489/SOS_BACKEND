@@ -314,7 +314,7 @@ function stopRecording(room, roomId) {
     // 1. Tell ffmpeg to flush and write MP3 trailer gracefully
     try {
       ffmpegProcess.stdin.write("q\n");
-      ffmpegProcess.stdin.end(); 
+      ffmpegProcess.stdin.end();  
     } catch (_) {}
 
     // 2. Close mediasoup resources AFTER ffmpeg has exited
@@ -498,7 +498,7 @@ function cleanupSocket(socket, io) {
       if (slot?.producer) slot.producer.close();
       room.producer  = null;
       room.creatorId = null;
-      io.to(roomId).emit('creator-left');
+      io.to(roomId).emit('creator-left', { roomId });
     }
 
     // Notify creator when a listener leaves
@@ -578,7 +578,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
           room.producer = null;
           room.creatorId = null; 
           
-          io.to(roomId).emit("creator-left");
+          io.to(roomId).emit("creator-left", { roomId });
         }
         room.sosId = sosId;
         room.creatorId = socket.id;
@@ -691,11 +691,11 @@ export const registerMediaSoupHandler = async (io, socket) => {
       producer.on("transportclose", () => {
         stopRecording(room, roomId);
         room.producer = null;
-        io.to(roomId).emit("creator-left");
+        io.to(roomId).emit("creator-left", { roomId });
       });
 
       // Notify listeners that a producer is available (independent of recording)
-      socket.to(roomId).emit("ms:new-producer", { producerId: producer.id });
+      socket.to(roomId).emit("ms:new-producer", { producerId: producer.id, roomId });
 
       // ── Start server-side recording immediately ───────────────────────────
       // Recording is INDEPENDENT of listeners. Audio is saved to disk as soon
