@@ -85,6 +85,7 @@ if (SENTRY_ENABLED === "true") {
 app.use(
   cors({
     origin: [
+      "http://localhost:8081",
       "http://localhost:4000",
       "http://localhost:3000", // local
       "https://back-sos.pritamaqua.aqualeafitsol.com", // production
@@ -114,7 +115,7 @@ app.use((req, res, next) => {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     accept: "*/*",
     connection: "keep-alive",
-    referer: "https://back.travelmoney.co.il/",
+    referer: "https://back-sos.pritamaqua.aqualeafitsol.com/",
     cookie: "cf_clearance=xyz123; session_token=abc456;",
   };
 
