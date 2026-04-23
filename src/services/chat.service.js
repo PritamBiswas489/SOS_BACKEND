@@ -127,4 +127,15 @@ export default class ChatService {
       throw new Error("FETCH_CHAT_HISTORY_FAILED");
     }
   }
+  static async getChatRecords({roomId, limit = 50, page = 1, userId, headers}, callback) {
+    try {
+      const messages = await this.getChatHistory(roomId, limit, page);
+      return callback(null, { data: messages });
+    } catch (error) {
+      logger.error("ERROR In getChatRecords", { error: error });
+      console.error("Error fetching chat records:", error);
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("FETCH_CHAT_RECORDS_FAILED"));
+    }
+  }
 }

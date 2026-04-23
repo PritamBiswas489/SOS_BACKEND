@@ -1,17 +1,21 @@
-export default function SosSessions(sequelize, DataTypes) {
-  const SosSessions = sequelize.define(
-    "SosSessions",
+export default function SosSessionNotifications(sequelize, DataTypes) {
+  const SosSessionNotifications = sequelize.define(
+    "SosSessionNotifications",
     {
       id: {
         type: DataTypes.BIGINT,
         autoIncrement: true,
         primaryKey: true,
       },
-      socket_id: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
+      sos_session_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "sos_sessions",
+          key: "id",
+        },
       },
-      user_id: {
+      to_user_id: {
         type: DataTypes.BIGINT,
         allowNull: false,
         references: {
@@ -19,23 +23,15 @@ export default function SosSessions(sequelize, DataTypes) {
           key: "id",
         },
       },
-      number_of_trigger: {
+      response_status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: "pending",
+      },
+      alert_number: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 0,
-      },
-      status: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        defaultValue: "active",
-      },
-      resolved_by: {
-        type: DataTypes.BIGINT,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
+        defaultValue: 1,
       },
       created_at: {
         type: DataTypes.DATE,
@@ -48,10 +44,10 @@ export default function SosSessions(sequelize, DataTypes) {
       },
     },
     {
-      tableName: "sos_sessions",
+      tableName: "sos_session_notifications",
       timestamps: false,
     }
   );
 
-  return SosSessions;
+  return SosSessionNotifications;
 }

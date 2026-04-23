@@ -131,6 +131,15 @@ export default class TrustedContactService {
             model: User,
             as: "trusted_contact",
             where: { is_active: true },
+            include:[
+              {
+                model: Devices,
+                as: "devices",
+                where: { is_active: true },
+                required: false,
+                attributes: ["id", "device_token", "device_type"],
+              }
+            ],
             attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
             required: true,
           },
@@ -138,6 +147,15 @@ export default class TrustedContactService {
             model: User,
             as: "inviter",
             where: { is_active: true },
+            include:[
+              {
+                model: Devices,
+                as: "devices",
+                where: { is_active: true },
+                required: false,
+                attributes: ["id", "device_token", "device_type"],
+              }
+            ],
             attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
             required: true,
           },

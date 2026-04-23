@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats  } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -87,7 +87,58 @@ const relation = (db) => {
     onUpdate: "CASCADE",
   });
 
-  
+  User.hasMany(SosSessions, {
+    foreignKey: "user_id",
+    as: "sos_sessions",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  SosSessions.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
+  SosSessions.belongsTo(User, {
+    foreignKey: "resolved_by",
+    as: "resolver",
+  });
+  User.hasMany(SosSessions, {
+    foreignKey: "resolved_by",
+    as: "resolved_sos_sessions",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+
+  SosSessions.hasMany(SosSessionNotifications, {
+    foreignKey: "sos_session_id",
+    as: "notifications",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  SosSessionNotifications.belongsTo(SosSessions, {
+    foreignKey: "sos_session_id",
+    as: "sos_session",
+  });
+  SosSessionNotifications.belongsTo(User, {
+    foreignKey: "to_user_id",
+    as: "to_user",
+  });
+  User.hasMany(SosSessionNotifications, {
+    foreignKey: "to_user_id",
+    as: "sos_session_notifications",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+
+  SosSessions.hasMany(SosSessionAudioRecords, {
+    foreignKey: "sos_session_id",
+    as: "audio_records",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  SosSessionAudioRecords.belongsTo(SosSessions, {
+    foreignKey: "sos_session_id",
+    as: "sos_session",
+  });
 
 };
 
