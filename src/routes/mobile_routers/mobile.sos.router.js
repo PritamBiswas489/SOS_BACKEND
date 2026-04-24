@@ -216,6 +216,155 @@ router.post("/my-sos-sessions", async (req, res) => {
       res.return(response);
 });
 
+
+/**
+ * @swagger
+ * /api-mobile/auth/sos/response-sos-notification:
+ *   post:
+ *     summary: Respond to an incoming SOS notification
+ *     tags:
+ *       - SOS routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notification_id
+ *               - status
+ *             properties:
+ *               notification_id:
+ *                 type: integer
+ *                 description: The SOS notification ID to respond to
+ *                 example: 10
+ *               status:
+ *                 type: string
+ *                 description: Response status for the SOS notification
+ *                 example: accepted
+ *     responses:
+ *       200:
+ *         description: SOS notification response submitted successfully
+ *       400:
+ *         description: Bad request — missing or invalid notification_id or status
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+
+router.post("/response-sos-notification", async (req, res) => {
+    const response = await SosSessionsController.responseSosSessionNotification({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+
+});
+
+
+/**
+ * @swagger
+ * /api-mobile/auth/sos/change-my-sos-session-status:
+ *   post:
+ *     summary: Change status of my SOS session
+ *     tags:
+ *       - SOS routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session_id
+ *               - status
+ *             properties:
+ *               session_id:
+ *                 type: integer
+ *                 description: The SOS session ID to update
+ *                 example: 1
+ *               status:
+ *                 type: string
+ *                 description: New status for the user's SOS session
+ *                 example: closed
+ *     responses:
+ *       200:
+ *         description: SOS session status updated successfully
+ *       400:
+ *         description: Bad request — missing or invalid session_id or status
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+
+
+router.post("/change-my-sos-session-status", async (req, res) => {
+    const response = await SosSessionsController.changeMySosSessionStatus({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+});
+
+
+
+/**
+ * @swagger
+ * /api-mobile/auth/sos/save-session-audio-file-name:
+ *   post:
+ *     summary: Save an audio file name for an SOS session
+ *     tags:
+ *       - SOS routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session_id
+ *               - file_name
+ *             properties:
+ *               session_id:
+ *                 type: integer
+ *                 description: The SOS session ID to associate the audio file with
+ *                 example: 1
+ *               file_name:
+ *                 type: string
+ *                 description: The audio file name to save for the SOS session
+ *                 example: "audio_record_1714123456.mp3"
+ *     responses:
+ *       200:
+ *         description: Audio file name saved successfully
+ *       400:
+ *         description: Bad request — missing or invalid session_id or file_name
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/save-session-audio-file-name", async (req, res) => {
+    const response = await SosSessionsController.saveSessionAudioFileName({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+});
+
  
 
 export default router;

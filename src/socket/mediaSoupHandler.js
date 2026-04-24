@@ -7,6 +7,7 @@ import os from "os";
 import { fileURLToPath } from "url";
 import { createSocket as createUdpSocket } from "dgram";
 import { getProfileImage } from "../libraries/utility.js";
+import SosSessionsService from "../services/sosSessions.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,9 +191,14 @@ async function startRecording(room, roomId) {
 
     const rtpPort  = allocateRtpPort();
     const rtcpPort = rtpPort + 1;
-
-    const outputFile = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.mp3`);
-    sdpPath          = path.join(SOS_AUDIO_DIR, `${roomId}-${room.sosId}.sdp`);
+ 
+    const fileName = `${roomId}-${room.sosId}-${Date.now()}`; 
+    SosSessionsService.saveSessionAudioFileName({
+      session_id: room.sosId,
+      file_name: `${fileName}.mp3`,
+    },()=>{});
+    const outputFile = path.join(SOS_AUDIO_DIR, `${fileName}.mp3`);
+    sdpPath          = path.join(SOS_AUDIO_DIR, `${fileName}.sdp`);
 
     // rtcpMux:false — ffmpeg needs separate RTP + RTCP ports
     plainTransport = await room.router.createPlainTransport({

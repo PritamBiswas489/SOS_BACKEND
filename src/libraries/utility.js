@@ -326,6 +326,25 @@ export function getProfileImage(folderpath) {
   }
   return null; // or set to a default avatar URL if you have one
 }
+export function audioFileLink(filename) {
+  if (filename) {
+    const audioPath = path.join(
+      process.cwd(),
+      "uploads",
+      "sos-audio",
+      path.basename(filename),
+    );
+    if (!fs.existsSync(audioPath)) {
+      return null; // or set to a default audio URL if you have one
+    }
+    const fileStats = fs.statSync(audioPath);
+    if (!fileStats || fileStats.size === 0) {
+      return null;
+    }
+    return `${process.env.BASE_URL}/uploads/sos-audio/${path.basename(filename)}`;
+  }
+  return null; // or set to a default audio URL if you have one
+}
 
 
 

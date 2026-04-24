@@ -3,6 +3,7 @@ import { promisify } from "../libraries/utility.js";
 import UserLocationService from "../services/userLocation.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
 import db from "../databases/models/index.js";
+
 const { TrustedContacts } = db;
 
  

@@ -5,7 +5,9 @@ import logger from "../config/winston.js";
 import TrustedContactService from "./trustedContact.service.js";
 import { getProfileImage, promisify } from "../libraries/utility.js";
 import { enqueueBulk } from "../queues/notificationQueue.js";
-const { Op, fn, col, User, SosSessions, SosSessionNotifications } = db;
+import { response } from "express";
+const { Op, fn, col, User, SosSessions, SosSessionNotifications, Devices, SosSessionAudioRecords } = db;
+import { audioFileLink } from "../libraries/utility.js";
 export default class SosSessionsService {
   static async registerSosSession({ userid, payload, headers }, callback) {
     try {
@@ -150,7 +152,7 @@ export default class SosSessionsService {
             body: notificationBody,
             data: {
               messageType:'SOS',
-              type:'emergency'
+              fetchSOS:'1'
             }
           });
         }
@@ -189,6 +191,12 @@ export default class SosSessionsService {
                 as: "user",
                 attributes: ["id", "name", "phone_number","profile_photo"],
               },
+              {
+                model: SosSessionAudioRecords,
+                as: "audio_records",
+                attributes: ["id", "file_name", "created_at"],
+              },
+              
             ],
             where: statusFilter ? { status: statusFilter } : {}, // Apply status filter if provided
             required: true,
@@ -205,6 +213,14 @@ export default class SosSessionsService {
           : null;
         if (photo) {
           plain.sos_session.user.profile_photo = getProfileImage(photo);
+        }
+        if(plain.sos_session.audio_records && plain.sos_session.audio_records.length > 0){
+          const audioRecords = [];
+          plain.sos_session.audio_records.forEach((audioRecord) => {
+            audioRecord.file_url = audioFileLink(audioRecord.file_name);
+            audioRecords.push(audioRecord);
+          });
+          plain.sos_session.audio_records = audioRecords;
         }
         return plain;
       }) : [];
@@ -255,6 +271,11 @@ export default class SosSessionsService {
               },
             ],
           },
+          {
+            model:SosSessionAudioRecords,
+            as:"audio_records",
+            attributes:["id", "file_name", "created_at"],
+          }
         ],
         limit,
         offset,
@@ -264,8 +285,21 @@ export default class SosSessionsService {
 
       const sessions = response.rows.length > 0 ? response.rows.map((session) => {
         const plain = session.toJSON();
-        const numberofResponded = 0;
-        const numberOnTheWay = 0;
+        let numberofResponded = 0;
+        let numberOnTheWay = 0;
+        let numberReached = 0;
+        let numberFailed = 0;
+        let numberDeclined = 0;
+        let numberPending = 0;
+        const audioRecords = [];
+        
+        if(plain.audio_records && plain.audio_records.length > 0){
+          plain.audio_records.forEach((audioRecord) => {
+            audioRecord.file_url = audioFileLink(audioRecord.file_name);
+            audioRecords.push(audioRecord);
+          });
+        }
+        plain.audio_records = audioRecords;
         const notifications = plain.notifications.map((notification) => {
           const photo = notification?.to_user?.profile_photo
             ? `${process.env.IMAGE_BASE_URL}${notification.to_user.profile_photo}`
@@ -273,16 +307,32 @@ export default class SosSessionsService {
           if (photo) {
             notification.to_user.profile_photo = getProfileImage(photo);
           }
-          if(notification.response_status === "responded"){
+          if(notification.response_status !== "pending"){
             numberofResponded++;
           }
           if(notification.response_status === "on_the_way"){
             numberOnTheWay++;
           }
+          if(notification.response_status === "reached"){
+            numberReached++;
+          }
+          if(notification.response_status === "failed"){
+            numberFailed++;
+          }
+          if(notification.response_status === "declined"){
+            numberDeclined++;
+          }
+          if(notification.response_status === "pending"){
+            numberPending++;
+          }
           return notification;
         });
         plain.numberofResponded = numberofResponded;
         plain.numberOnTheWay = numberOnTheWay;
+        plain.numberReached = numberReached;
+        plain.numberFailed = numberFailed;
+        plain.numberDeclined = numberDeclined;
+        plain.numberPending = numberPending;
         plain.notifications = notifications;
         return plain;
       }) : [];
@@ -301,5 +351,193 @@ export default class SosSessionsService {
       console.error("Error fetching SOS sessions:", e.message);
       return callback(new Error("MY_SOS_SESSIONS_FAILED"), null);
     }
+  }
+  static async responseSosSessionNotification({ payload, headers, user }, callback) {
+      try{
+        const notificationId = payload.notification_id;
+        let responseStatus = payload.status; // e.g., "accepted", "on_the_way", "declined"
+       
+
+        const notification = await SosSessionNotifications.findOne({
+          where: {
+            id: notificationId,
+            to_user_id: user.id,
+          },
+        });
+        if (!notification) {
+          return callback(new Error("SOS_SESSION_NOTIFICATION_NOT_FOUND"), null);
+        }
+        await notification.update({ response_status: responseStatus });
+
+        const sosNotification = await SosSessionNotifications.findOne({
+          where: {
+            id: notification.id,
+          },
+          include: [
+            {
+              model: User,
+              as: "to_user",
+              attributes: ["id", "name", "phone_number","profile_photo"],
+            },
+            {
+              model: SosSessions,
+              as: "sos_session",
+              include: [
+                {
+                  model: User,
+                  as: "user",
+                  attributes: ["id", "name", "phone_number","profile_photo"],
+                  include:[
+                    {
+                      model: Devices,
+                      as: "devices",
+                      attributes: ["id", "device_token", "device_type"],
+                    }
+                  ]
+                },
+              ],
+            },
+          ],
+        });
+        //send push notification to the session owner about the response from the trusted contact
+        const deviceTokens = sosNotification?.sos_session?.user?.devices?.map((device) => device.device_token) || [];
+        if(deviceTokens.length > 0){
+          let notificationTitle, notificationBody;
+          const responderName = sosNotification?.to_user?.name || "A trusted contact";
+          if (responseStatus === "accepted") {
+            notificationTitle = `✅ Good news: ${responderName} accepted your SOS alert!`;
+            notificationBody = `${responderName} has accepted your SOS alert and is on their way to help you. Please stay safe and wait for their arrival.`;
+          }
+          if (responseStatus === "declined") {
+            notificationTitle = `⚠️ Update: ${responderName} declined your SOS alert`;
+            notificationBody = `${responderName} has declined your SOS alert. Please try reaching out to other trusted contacts or call emergency services if you need immediate assistance.`;
+          }
+          if(responseStatus === "on_the_way"){
+            notificationTitle = `🚗 Update: ${responderName} is on the way!`;
+            notificationBody = `${responderName} is on the way to help you. Please stay safe and wait for their arrival.`;
+          }
+            if(responseStatus === "failed"){
+            notificationTitle = `❌ Update: ${responderName} was unable to help`;
+            notificationBody = `${responderName} was unable to reach you. Please try contacting other trusted contacts or call emergency services if you need immediate assistance.`;
+            }
+            if(responseStatus === "reached"){
+              notificationTitle = `✅ Update: ${responderName} has reached you!`;
+              notificationBody = `${responderName} has reached your location. Please stay safe and follow their instructions.`;
+            }
+            enqueueBulk(deviceTokens, {
+            title: notificationTitle,
+            body: notificationBody,
+            data: {
+              messageType: 'VICTIM',
+              fetchVictimSOS: '1',
+            }
+            });
+
+          }
+        
+         return callback(null, { data: sosNotification });
+
+      }catch(e){
+        process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+        logger.error("ERROR In responseSosSessionNotification", { error: e });
+        console.error("Error responding to SOS session notification:", e.message);
+        return callback(new Error("RESPONSE_SOS_SESSION_NOTIFICATION_FAILED"), null);
+      }
+  }
+  static async changeMySosSessionStatus({ payload, headers, user }, callback) {
+    try{
+      const sessionId = payload.session_id;
+      const newStatus = payload.status;
+      const sosSession = await SosSessions.findOne({
+        where: {
+          id: sessionId,
+          user_id: user.id,
+        },
+      });
+      if(!sosSession){
+        return callback(new Error("SOS_SESSION_NOT_FOUND"), null);
+      }
+     await sosSession.update({ status: newStatus });
+
+     const session = await sosSession.reload({
+        include:[
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "phone_number","profile_photo"],
+          },
+          {
+            model: SosSessionNotifications,
+            as: "notifications",
+            include:[
+              {
+                model: User,
+                as: "to_user",
+                attributes: ["id", "name", "phone_number","profile_photo"],
+                include:[
+                  {
+                    model: Devices,
+                    as: "devices",
+                    attributes: ["id", "device_token", "device_type"],
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      //send notification to trusted contacts about the status change
+      const deviceTokens = [];
+      if(session.notifications && session.notifications.length > 0){
+      session.notifications.forEach((notification) => {
+        const toUserDevices = notification?.to_user?.devices || [];
+        toUserDevices.forEach((device) => {
+          deviceTokens.push(device.device_token);
+        });
+      });
+     }
+      let notificationTitle, notificationBody;
+      if(deviceTokens.length > 0){
+        if (newStatus === "cancelled") {
+          notificationTitle = `❌ SOS Alert Cancelled`;
+          notificationBody = `${session?.user?.name} has cancelled the SOS alert. Thank you for being ready to help.`;
+        }
+        if (newStatus === "resolved") {
+          notificationTitle = `✅ SOS Alert Resolved`;
+          notificationBody = `${session?.user?.name} has marked the SOS alert as resolved. Thank you for your support.`;
+        }
+        enqueueBulk(deviceTokens, {
+          title: notificationTitle,
+          body: notificationBody,
+          data: {
+            fetchSOS:'1'
+          }
+        });
+      }
+      return callback(null, { data: session });
+    }catch(e){
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+      logger.error("ERROR In changeMySosSessionStatus", { error: e });
+      console.error("Error changing SOS session status:", e.message);
+      return callback(new Error("CHANGE_SOS_SESSION_STATUS_FAILED"), null);
+    }
+
+  }
+  static async saveSessionAudioFileName({ session_id, file_name }, callback) {
+     try{
+      const sessionId = session_id;
+      const audioFileName = file_name;
+      await SosSessionAudioRecords.create({
+        sos_session_id: sessionId,
+        file_name: audioFileName,
+      });
+      return callback(null, { data: { message: "Audio file name saved successfully" } });
+
+     }catch(e){
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+      logger.error("ERROR In saveSessionAudioFileName", { error: e });
+      console.error("Error saving session audio file name:", e.message);
+      return callback(new Error("SAVE_SESSION_AUDIO_FILE_NAME_FAILED"), null);
+     }
   }
 }
