@@ -47,15 +47,12 @@ const getIceServers = () => [
 ];
 
 const getWebRtcTransportOptions = () => ({
-  listenIps: [
-    {
-      ip: "0.0.0.0",
-      announcedIp: process.env.ANNOUNCED_IP,
-    },
-  ],
+  listenIps: [{ ip: "0.0.0.0", announcedIp: process.env.ANNOUNCED_IP }],
   enableUdp: true,
   enableTcp: true,
   preferUdp: true,
+  initialAvailableOutgoingBitrate: 600000,
+  maxIncomingBitrate: 1500000,
   iceServers: getIceServers(),
 });  
 
@@ -234,19 +231,19 @@ async function startRecording(room, roomId) {
     ffmpegProcess = spawn(FFMPEG_BIN, [
       "-loglevel",           "warning",
       "-protocol_whitelist", "file,rtp,udp,crypto",
-      "-fflags",             "+nobuffer",        // disable input buffering — avoids silent gap
-      "-analyzeduration",    "0",                // skip 5 s analysis delay — start decoding immediately
-      "-probesize",          "32",               // minimal probe size — no blank lead-in
+      "-analyzeduration",    "0",         // skip 5 s analysis delay
+      "-probesize",          "32",        // minimal probe size
       "-i",                  sdpPath,
       "-vn",
       "-acodec",             "libmp3lame",
       "-b:a",                "128k",
       "-ar",                 "44100",
       "-ac",                 "2",
+      "-flush_packets",      "1",         // flush to disk immediately — reduces RAM buffering
       "-f",                  "mp3",
       "-y",
-      outputFile,
-    ], { stdio: ["pipe", "pipe", "pipe"] });
+       outputFile,
+      ], { stdio: ["pipe", "pipe", "pipe"] });
 
     ffmpegProcess.stderr.on("data", (d) =>
       console.log(`[ffmpeg:${roomId}] ${d.toString().trim()}`)
@@ -610,14 +607,18 @@ export const registerMediaSoupHandler = async (io, socket) => {
       const room = rooms[roomId];
       if (!room) return callback({ error: "Room not found" });
 
+      
+
       const transport = await room.router.createWebRtcTransport(
         getWebRtcTransportOptions()
       );
 
-      console.log(
-        "ICE candidates:",
-        JSON.stringify(transport.iceCandidates)
-      );
+      await transport.setMaxIncomingBitrate(200000);
+
+      // console.log(
+      //   "ICE candidates:",
+      //   JSON.stringify(transport.iceCandidates)
+      // );
 
       transport.on("dtlsstatechange", (state) => {
         if (state === "closed") transport.close();
