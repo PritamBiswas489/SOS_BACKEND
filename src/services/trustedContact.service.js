@@ -9,6 +9,8 @@ import { promisify } from "../libraries/utility.js";
 import path from "path";
 import fs from "fs";
 import { getProfileImage } from "../libraries/utility.js";
+import UserLocationService from "./userLocation.service.js";
+ 
 
 export default class TrustedContactService {
   //send trusted contact invitation
@@ -603,6 +605,27 @@ export default class TrustedContactService {
               ? Number(c.trusted_user_id)
               : Number(c.user_id)
       );
+  }
+  //get trusted contacts locations
+  static async getTrustedContactsLocations({ userid, payload, headers }, callback) {
+    console.log("Fetching trusted contacts' locations for user ID:", userid);
+    console.log("Payload:", payload);
+    try {
+      const contactIds = await this.getLocationShareContactIds(userid);
+      const uniqueContactIds = [...new Set(contactIds)];
+      const contacts = await promisify(
+        UserLocationService.getContactsLocation.bind(UserLocationService),
+        uniqueContactIds,
+      ).catch((_err) => {
+        throw new Error("GET_TRUSTED_CONTACTS_LOCATIONS_FAILED");
+      });
+      return callback(null, { data: contacts });
+    } catch (error) {
+      logger.error("ERROR In getTrustedContactsLocations", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_TRUSTED_CONTACTS_LOCATIONS_FAILED"), null);
+    }
+
   }
 
   static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {

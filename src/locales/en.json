@@ -526,5 +526,7 @@
 	"SAVE_SESSION_AUDIO_SUCCESSFUL": "Session audio saved successfully.",
 	"REGISTER_SOS_SESSION_FAILED": "",
     "SOS_SESSION_NOT_FOUND":  " SOS session not found.",
-	"SAVE_SESSION_AUDIO_FILE_NAME_FAILED": "Failed to save session audio file name."
+	"SAVE_SESSION_AUDIO_FILE_NAME_FAILED": "Failed to save session audio file name.",
+	"GET_TRUSTED_CONTACTS_LOCATIONS_FAILED": "Failed to get trusted contacts' locations.",
+	"GET_TRUSTED_CONTACTS_LOCATIONS_SUCCESSFUL": "Trusted contacts' locations fetched successfully."
 }

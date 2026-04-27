@@ -299,4 +299,28 @@ router.get("/chat-contact-friend-list", async (req, res) => {
   });
   res.return(response);
 });
+
+
+/**
+ * @swagger
+ * /api-mobile/auth/trusted-contact/contacts-get-locations:
+ *   get:
+ *     summary: Get locations of trusted contacts
+ *     tags:
+ *       - Add trusted contact routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Locations of trusted contacts fetched successfully
+ */
+router.get("/contacts-get-locations", async (req, res) => {
+  const response = await TrustedContactController.getTrustedContactsLocations({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+})
 export default router;

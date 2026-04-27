@@ -31,6 +31,10 @@ const options = {
           description: "Endpoints for managing push notifications",
       },
       {
+        name: "Crash report routes",
+        description: "Endpoints for managing crash reports",
+      },
+      {
         name: "Redis testing routes",
         description: "Endpoints for Redis cache management",
       },
