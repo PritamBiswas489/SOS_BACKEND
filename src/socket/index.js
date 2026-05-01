@@ -13,6 +13,7 @@ import { registerPresenceHandlers } from "./presenceHandler.js";
 import { registerTrustedContactHandler } from "./trustedContacthandler.js";
 import { registerLocationHandlers } from "./locationHandler.js";
 import { registerMediaSoupHandler } from "./mediaSoupHandler.js";
+import { registerHealthHandler } from "./healthHandler.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
@@ -237,6 +238,8 @@ export const initSocketServer = async (httpServer) => {
     registerLocationHandlers(io, socket);
     //Register media SOAP-related event handlers
     registerMediaSoupHandler(io, socket);
+   //Register health-related event handlers
+    registerHealthHandler(io, socket);
 
     // Notify contacts that user is online
     const contactsids = await TrustedContactService.getLocationShareContactIds(socket.userId);
