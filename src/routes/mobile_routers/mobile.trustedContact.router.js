@@ -322,5 +322,27 @@ router.get("/contacts-get-locations", async (req, res) => {
     user: req.user,
   });
   res.return(response);
-})
+});
+/**
+ * @swagger
+ * /api-mobile/auth/trusted-contact/contacts-get-heart-rate-readings:
+ *   get:
+ *     summary: Get heart rate readings of trusted contacts
+ *     tags:
+ *       - Add trusted contact routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Heart rate readings of trusted contacts fetched successfully
+ */
+router.get("/contacts-get-heart-rate-readings", async (req, res) => {
+  const response = await TrustedContactController.getTrustedContactsHeartRateReadings({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
 export default router;

@@ -42,6 +42,10 @@ const options = {
         name: "SOS routes",
         description: "Endpoints for SOS session management",
       },
+       {
+        name: "Health routes",
+        description: "Endpoints for health session management",
+      },
     ],
     servers: [
       {

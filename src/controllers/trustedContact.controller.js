@@ -330,4 +330,35 @@ export default class TrustedContactController {
     });
 
   }
+  static async getTrustedContactsHeartRateReadings(request) {
+    const { payload, headers, user } = request;
+    const userid = user?.id;
+    return new Promise((resolve) => {
+      TrustedContactService.getTrustedContactsHeartRateReadings(
+        { userid, payload, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__(
+              "GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_SUCCESSFUL",
+            ),
+            error: null,
+          });
+        }
+      );
+    });
+  }
 }

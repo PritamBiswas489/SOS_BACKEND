@@ -10,6 +10,7 @@ import path from "path";
 import fs from "fs";
 import { getProfileImage } from "../libraries/utility.js";
 import UserLocationService from "./userLocation.service.js";
+import HeartRateService from "./heartRate.service.js";
  
 
 export default class TrustedContactService {
@@ -626,6 +627,27 @@ export default class TrustedContactService {
       return callback(new Error("GET_TRUSTED_CONTACTS_LOCATIONS_FAILED"), null);
     }
 
+  }
+  static async getTrustedContactsHeartRateReadings({ userid, payload, headers }, callback) {
+    console.log("Fetching trusted contacts' heart rate readings for user ID:", userid);
+    console.log("Payload:", payload);
+      try {
+        const contactIds = await this.getLocationShareContactIds(userid);
+        const uniqueContactIds = [...new Set(contactIds)];
+         const contacts = await promisify(
+        HeartRateService.getContactLatestStressReading.bind(HeartRateService),
+          uniqueContactIds,
+        ).catch((_err) => {
+          throw new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED");
+        });
+        return callback(null, { data: contacts });
+        return callback(null, { data: heartRateReadings });
+      } catch (error) {
+        console.log("ERROR In getTrustedContactHeartRateReadings", error?.message || error);
+        logger.error("ERROR In getTrustedContactHeartRateReadings", { error: error });
+        process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+        return callback(new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED"), null);
+      }
   }
 
   static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {
