@@ -117,7 +117,8 @@ export const registerChatHandlers = (io, socket) => {
             title: notificationTitle,
             body: notificationBody,
             data: {
-               messageType:'CHAT_MESSAGE',
+               messageType:'CHAT',
+               senderId: socket.userId,
             }
           });
         }
