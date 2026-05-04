@@ -6,6 +6,7 @@ import TrustedContactService from "./trustedContact.service.js";
 import { getProfileImage, promisify } from "../libraries/utility.js";
 import { enqueueBulk } from "../queues/notificationQueue.js";
 import { response } from "express";
+ 
 const { Op, fn, col, User, SosSessions, SosSessionNotifications, Devices, SosSessionAudioRecords } = db;
 import { audioFileLink } from "../libraries/utility.js";
 export default class SosSessionsService {
@@ -28,20 +29,31 @@ export default class SosSessionsService {
       let newSosSession = null;
       if (activeSession) {
         const number_of_trigger = activeSession.number_of_trigger + 1;
-        await activeSession.update({ number_of_trigger });
+        const stress_data = payload?.type === "stress" ? {
+          hr: payload.hr,
+          stress_score: payload.stress_score,
+        } : activeSession.stress_data;
+        await activeSession.update({ number_of_trigger, stress_data });
         const updatedSession = await activeSession.reload();
         newSosSession = updatedSession;
       } else {
-        newSosSession = await SosSessions.create({
+        const sessionData = {
           user_id: userid,
           number_of_trigger: 1,
-        });
+        };
+        if(payload?.type === "stress"){
+          sessionData.stress_data = {
+            hr: payload.hr,
+            stress_score: payload.stress_score,
+          }
+        }
+        newSosSession = await SosSessions.create(sessionData);
       }
       if (newSosSession?.id) {
-        this.sendSosSessionNotificationProcess(newSosSession.id).catch((e) => {
-          process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
-          logger.error("ERROR In sendSosSessionNotificationProcess", { error: e });
-        });
+          this.sendSosSessionNotificationProcess(newSosSession.id, payload?.type).catch((e) => {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+            logger.error("ERROR In sendSosSessionNotificationProcess", { error: e });
+          });
       }
       return callback(null, { data: newSosSession });
     } catch (e) {
@@ -81,7 +93,7 @@ export default class SosSessionsService {
       return callback(new Error("SEND_SOS_SESSION_NOTIFICATION_FAILED"), null);
     }
   }
-  static async sendSosSessionNotificationProcess(sosSessionId) {
+  static async sendSosSessionNotificationProcess(sosSessionId, type = "normal") {
     try {
     const sosSession = await SosSessions.findOne({
       where: {
@@ -135,17 +147,37 @@ export default class SosSessionsService {
           await checkExistingNotification.update({ alert_number });
         }
         if(devices && devices.length > 0){
+
+
           let notificationTitle, notificationBody;
-          if (numberOfAlerts === 1) {
-            notificationTitle = `SOS Alert: ${victimName} needs help!`;
-            notificationBody = `${victimName} has triggered an SOS alert. Please check the app and offer your assistance if possible.`;
-          } else if (numberOfAlerts === 2) {
-            notificationTitle = `⚠️ Urgent SOS: ${victimName} still needs help!`;
-            notificationBody = `${victimName} has triggered a second SOS alert. Please respond immediately.`;
-          } else {
-            notificationTitle = `🚨 CRITICAL SOS #${numberOfAlerts}: ${victimName} is in danger!`;
-            notificationBody = `${victimName} has triggered ${numberOfAlerts} SOS alerts. This is a critical emergency — please respond now!`;
+
+          if(type === "stress"){
+            const stressScore = sosSession.stress_data?.stress_score;
+            const hr = sosSession.stress_data?.hr;
+            if (stressScore >= 96) {
+              notificationTitle = `🚨 CRITICAL Stress Alert: ${victimName} is in severe distress!`;
+              notificationBody = `${victimName}'s stress score has reached ${stressScore} with a heart rate of ${hr} BPM. This is a critical level — please respond immediately and check if they are safe.`;
+            } else if (stressScore >= 86) {
+              notificationTitle = `🔴 High Stress Alert: ${victimName} needs your attention!`;
+              notificationBody = `${victimName} is experiencing high stress (score: ${stressScore}, HR: ${hr} BPM). Please reach out to them as soon as possible.`;
+            } else {
+              notificationTitle = `⚠️ Stress Alert: ${victimName} might need support!`;
+              notificationBody = `${victimName} has an elevated stress score of ${stressScore} with a heart rate of ${hr} BPM. Please check in with them and offer your support.`;
+            }
+          }else{
+            if (numberOfAlerts === 1) {
+              notificationTitle = `SOS Alert: ${victimName} needs help!`;
+              notificationBody = `${victimName} has triggered an SOS alert. Please check the app and offer your assistance if possible.`;
+            } else if (numberOfAlerts === 2) {
+              notificationTitle = `⚠️ Urgent SOS: ${victimName} still needs help!`;
+              notificationBody = `${victimName} has triggered a second SOS alert. Please respond immediately.`;
+            } else {
+              notificationTitle = `🚨 CRITICAL SOS #${numberOfAlerts}: ${victimName} is in danger!`;
+              notificationBody = `${victimName} has triggered ${numberOfAlerts} SOS alerts. This is a critical emergency — please respond now!`;
+            }
           }
+
+          
           const deviceTokens = devices.map((device) => device.device_token);
           enqueueBulk(deviceTokens, {
             title: notificationTitle,
@@ -164,6 +196,10 @@ export default class SosSessionsService {
       console.error("Error in SOS notification process:", e.message);
       throw e;
     }
+  }
+  static async sendStressSosSessionNotificationProcess(sosSessionId) {
+    console.log("Sending stress SOS session notification for session ID:", sosSessionId);
+
   }
   //This method will handle incoming notifications related to SOS sessions, such as updates on the session status or responses from emergency contacts.
   static async incommingSosSessionNotification({ payload, headers, user },callback) {
@@ -539,5 +575,26 @@ export default class SosSessionsService {
       console.error("Error saving session audio file name:", e.message);
       return callback(new Error("SAVE_SESSION_AUDIO_FILE_NAME_FAILED"), null);
      }
+  }
+  static async triggerStressSos(request, callback) {
+     try{
+      const { payload, headers, user } = request;
+      const {hr, stress_score } = payload;
+      const userId = user?.id;
+
+      return await this.registerSosSession({ userid: userId, payload: { hr, stress_score, type: "stress" }, headers }, (err, response) => {
+        if (err) {
+          return callback(err, null);
+        }
+        return callback(null, { data: response.data });
+      });
+      
+     }catch(e){
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+      logger.error("ERROR In triggerStressSos", { error: e });
+      console.error("Error triggering stress SOS:", e.message);
+      return callback(new Error("TRIGGER_STRESS_SOS_FAILED"), null);
+     }
+
   }
 }

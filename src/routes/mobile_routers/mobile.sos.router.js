@@ -365,6 +365,54 @@ router.post("/save-session-audio-file-name", async (req, res) => {
       res.return(response);
 });
 
+
+/**
+ * @swagger
+ * /api-mobile/auth/sos/trigger-stress-sos:
+ *   post:
+ *     summary: Trigger an SOS session based on stress detection
+ *     tags:
+ *       - SOS routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - hr
+ *               - stress_score
+ *             properties:
+ *               hr:
+ *                 type: number
+ *                 description: Heart rate value of the user
+ *                 example: 98
+ *               stress_score:
+ *                 type: number
+ *                 description: Stress score calculated from sensor data
+ *                 example: 75.5
+ *     responses:
+ *       200:
+ *         description: Stress SOS triggered successfully
+ *       400:
+ *         description: Bad request — missing or invalid hr or stress_score
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/trigger-stress-sos", async (req, res) => {
+    const response = await SosSessionsController.triggerStressSos({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+    });
+    res.return(response);
+});
+
  
 
 export default router;

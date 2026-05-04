@@ -46,6 +46,11 @@ export default function SosSessions(sequelize, DataTypes) {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      stress_data: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+      },
     },
     {
       tableName: "sos_sessions",

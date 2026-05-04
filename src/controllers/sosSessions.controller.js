@@ -205,4 +205,33 @@ export default class SosSessionsController {
       );
     });
   }
+
+  static async triggerStressSos(request) {
+    const { payload, headers, user } = request;
+    return new Promise((resolve) => {
+      SosSessionsService.triggerStressSos(
+        { payload, headers, user },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "TRIGGER_STRESS_SOS_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          } 
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("TRIGGER_STRESS_SOS_SUCCESSFUL"),
+            error: null,
+          });
+        }
+      );
+    });
+  }
 }
