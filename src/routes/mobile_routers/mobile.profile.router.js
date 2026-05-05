@@ -143,4 +143,28 @@ router.post("/update", uploadProfileImage.single('profile_image'), async (req, r
 });
 
 
+/**
+ * @swagger
+ * /api-mobile/auth/user/profile/device-is-equal-to-last-login:
+ *   get:
+ *     summary: Check if current device matches the last login device
+ *     tags:
+ *       - User authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Device check result returned successfully
+ */
+router.get("/device-is-equal-to-last-login", async (req, res) => {
+    const response = await ProfileController.checkDeviceIsEqualToLastLogin({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+});
+
+
 export default router;

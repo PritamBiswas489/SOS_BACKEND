@@ -7,6 +7,7 @@ import moment from "moment-timezone";
 import fs from "fs";
 import path from "path";
 import { getProfileImage } from "../libraries/utility.js";
+import { enqueueBulk } from "../queues/notificationQueue.js";
  
 
 const { Op, User, Licenses, Devices } = db;
@@ -73,8 +74,7 @@ export default class UserService {
       });
       const deviceTokens = devices.map((device) => device.device_token);
       return callback(null, deviceTokens);
-    }
-      catch (error) {
+    } catch (error) {
       console.error("Error fetching user device tokens:", error);
       logger.error("ERROR In getUserDeviceTokens", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
@@ -84,17 +84,29 @@ export default class UserService {
   static async saveDeviceToken({ userId, payload, headers }, callback) {
     try {
       console.log("Saving device token for user ID:", userId);
-      const { device_token, device_type } = payload;
+      const { device_token, device_type, device_id } = payload;
       const checkDevice = await Devices.findOne({
-        where: { user_id: userId},
+        where: { user_id: userId },
       });
-      if(checkDevice){
+
+      if (checkDevice) {
         await Devices.update(
-          { device_token, device_type, last_login: moment().tz(process.env.timezone).format() },
-          { where: { user_id: userId } }
+          {
+            device_token,
+            device_type,
+            device_id,
+            last_login: moment().tz(process.env.timezone).format(),
+          },
+          { where: { user_id: userId } },
         );
-      }else{
-        await Devices.create({ user_id: userId, device_token, device_type, last_login: moment().tz(process.env.timezone).format() });
+      } else {
+        await Devices.create({
+          user_id: userId,
+          device_token,
+          device_type,
+          device_id,
+          last_login: moment().tz(process.env.timezone).format(),
+        });
       }
       return callback(null, { message: "Device token saved successfully" });
     } catch (error) {
@@ -117,7 +129,10 @@ export default class UserService {
     }
   }
 
-  static async updateProfile({ userId, payload, headers, profileImagePath }, callback) {
+  static async updateProfile(
+    { userId, payload, headers, profileImagePath },
+    callback,
+  ) {
     try {
       const user = await User.findOne({
         where: { id: userId, role: "USER" },
@@ -147,7 +162,7 @@ export default class UserService {
       if (Object.keys(updateData).length === 0) {
         return callback(new Error("NO_UPDATE_DATA_PROVIDED"), null);
       }
-      updateData.first_time_login = false; // Set first_time_login to false on profile update 
+      updateData.first_time_login = false; // Set first_time_login to false on profile update
 
       await User.update(updateData, {
         where: { id: userId },
@@ -166,5 +181,57 @@ export default class UserService {
       return callback(error, null);
     }
   }
-   
+  static async checkDeviceIdExistance(userId, deviceID) {
+    try {
+      const exist = await Devices.findOne({
+        where: { user_id: userId, device_id: deviceID },
+      });
+      return !!user; // Return true if device exists, false otherwise
+    } catch (error) {
+      console.error("Error checking device ID existence:", error);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      throw error;
+    }
+  }
+  static async getDeviceIdByUserId(userId) {
+     try{
+      const device = await Devices.findOne({
+        where: { user_id: userId },
+        attributes: ['device_id']
+      });
+      return device ? device.device_id : null;
+     } catch (error) {
+       console.error("Error getting device ID by user ID:", error);
+       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+       return null;
+     }
+  }
+  static async checlMultipleDeviceLogin(userId, deviceID, i18n) {
+    console.log(
+      "Checking multiple device login for user ID:",
+      userId,
+      "with device ID:",
+      deviceID,
+    );
+    try {
+      const checkDevice = await Devices.findOne({
+        where: { user_id: userId },
+      });
+      if (checkDevice && checkDevice.device_id !== deviceID) {
+        const previousDeviceToken = checkDevice.device_token;
+        if (previousDeviceToken) {
+          console.log("User logged in from a different device. Previous device token:", previousDeviceToken);
+          await enqueueBulk([previousDeviceToken], {
+            title: i18n.__("ACCOUNT_ACCESSED_FROM_NEW_DEVICE"),
+            message: i18n.__(
+              "YOUR_ACCOUNT_WAS_ACCESSED_FROM_ANOTHER_DEVICE",
+            ),
+            data: {
+              messageType: "ACCOUNT_ACCESSED_FROM_NEW_DEVICE_NOTIFICATION",
+            },
+          });
+        }
+      }
+    } catch (error) {}
+  }
 }

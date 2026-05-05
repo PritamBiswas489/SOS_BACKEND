@@ -24,7 +24,6 @@ export default async (req, res, next) => {
 		const { authorization, refreshtoken } = req.headers;
 		// console.log({ authorization, refreshtoken });
 
-
 		if (!authorization) {
 			return res.send({
 				status: 401,
@@ -83,7 +82,7 @@ export default async (req, res, next) => {
 				}
 				if(getUserById.role !== "USER"){
 			    	return res.send({ status: 403, data: [], error: { message: i18n.__("UNAUTHORIZED_ACTION") } });
-			}
+			    }
 				// const checkDeviceIdExistance = await UserService.checkDeviceIdExistance(data.id, deviceID);
 				// if(!checkDeviceIdExistance && checkdeviceid){
 				// 	return res.send({ status: 403, data: [], error: { message: i18n.__("DEVICE_ID_MISMATCH") } });

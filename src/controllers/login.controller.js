@@ -12,6 +12,7 @@ import redisClient from "../config/redis.config.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import OtpVerificationService from "../services/otpVerification.service.js";
 import logger from "../config/winston.js";
+import UserService from "../services/user.service.js";
  
 
 const { User, UserDevices, Op } = db;
@@ -145,14 +146,16 @@ export default class LoginController {
   static async createUserAfterOtpVerification(request) {
     const {
       payload,
-      headers: { i18n },
+      headers: { i18n, deviceid },
     } = request;
     try {
       const phoneNumber = payload?.phoneNumber;
       const role = "USER";
       const user = await User.findOne({ where: { phone_number: phoneNumber, role } });
       let jwtPayload;
+      let existingUser = false;
       if (user) {
+         existingUser = true;
          jwtPayload = {
           id: user.id,
           phoneNumber: user.phone_number,
@@ -161,6 +164,8 @@ export default class LoginController {
           role: user.role,
           profile_photo: user.profile_photo,
         };
+
+
       } else {
         const newUser = await User.create({ phone_number: phoneNumber,  role });
          jwtPayload = {
@@ -185,6 +190,9 @@ export default class LoginController {
         process.env.REFRESH_TOKEN_SECRET_KEY,
         Number(process.env.REFRESH_TOKEN_EXPIRES_IN),
       );
+      if(existingUser){
+        UserService.checlMultipleDeviceLogin(jwtPayload?.id, deviceid, i18n);
+      }
 
       return {
         status: 200,
@@ -193,6 +201,7 @@ export default class LoginController {
         error: {},
       };
     } catch (e) {
+      console.error("Error in createUserAfterOtpVerification:", e);
       logger.error("ERROR In createUserAfterOtpVerification", { error: e });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
       return {

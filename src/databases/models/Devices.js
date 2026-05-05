@@ -12,6 +12,10 @@ export default function Devices(sequelize, DataTypes) {
 				type: DataTypes.BIGINT,
 				allowNull: false
 			},
+			device_id: {
+				type: DataTypes.STRING(255),
+				allowNull: true
+			},
 			device_token: {
 				type: DataTypes.TEXT,
 				allowNull: true
