@@ -23,23 +23,24 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - phoneNumber
+ *               - messageType
+ *               - appHash
+ *               - licenseNumber
  *             properties:
  *               phoneNumber:
  *                 type: string
- *                 required: true
  *                 default: "+919830990065"
  *               messageType:
  *                 type: string
- *                 required: true
  *                 enum: ["whatsapp", "sms"]
  *                 default: "sms"
  *               appHash:
  *                 type: string
- *                 required: true
  *                 default: ""
  *               licenseNumber:
  *                 type: string
- *                 required: true
  *                 default: "KBY-08-000001"
  *     responses:
  *       200:
