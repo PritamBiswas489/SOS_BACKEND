@@ -51,6 +51,11 @@ export default function SosSessions(sequelize, DataTypes) {
         allowNull: true,
         defaultValue: null,
       },
+      before_expire_notification: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
       tableName: "sos_sessions",

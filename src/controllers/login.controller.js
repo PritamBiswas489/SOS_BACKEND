@@ -15,7 +15,7 @@ import logger from "../config/winston.js";
 import UserService from "../services/user.service.js";
  
 
-const { User, UserDevices, Op } = db;
+const { User, UserDevices, Op, Licenses } = db;
 
 export default class LoginController {
   /**
@@ -31,6 +31,7 @@ export default class LoginController {
 
     try {
       const phoneNumber = payload?.phoneNumber;
+        
       const messageType = payload?.messageType || "sms";
       const appHash = payload?.appHash || "";
 
@@ -91,6 +92,107 @@ export default class LoginController {
         error: { message: i18n.__("OTP_SEND_FAILED"), reason: e.message },
       };
     }
+  }
+  static async sendOtpToMobileNumberForApp(request) {
+
+      const {
+      payload,
+      headers: { i18n },
+    } = request;
+
+    try {
+      const phoneNumber = payload?.phoneNumber;
+      const licenseNumber = payload?.licenseNumber;  
+      const messageType = payload?.messageType || "sms";
+      const appHash = payload?.appHash || "";
+      console.log({ phoneNumber, licenseNumber, messageType, appHash });
+      
+      const phoneRegex = /^\+\d{1,3}\d{4,14}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        return {
+          status: 400,
+          data: [],
+          error: { message: i18n.__("INVALID_PHONE_NUMBER_FORMAT") },
+        };
+      }
+
+      const checkUser = await User.findOne({
+         where: { 
+          phone_number: phoneNumber 
+        
+        },
+        include: [
+          {
+            model: Licenses,
+            as: "licenses", 
+            attributes: ["id", "license_key", "status"],
+          },
+        ],
+      });
+      console.log("checkUser", JSON.stringify(checkUser, null, 2));
+      if(checkUser?.licenses?.id){
+        const existingKey = checkUser?.licenses?.license_key;
+        if(!licenseNumber || existingKey !== licenseNumber){
+          return {
+            status: 400,
+            data: [],
+            error: { message: i18n.__("LICENSE_NUMBER_MISSING_OR_INVALID") },
+          };
+        }
+      }
+      
+      const otpVerification =
+        await OtpVerificationService.createOtpVerification({ phoneNumber });
+
+     
+
+      // const [whatsappResult, smsResult] = await Promise.all([
+      //   messageType === "whatsapp"
+      //     ? otpWhatsappService(phoneNumber, otpVerification.otp_code)
+      //     : null,
+      //   messageType === "sms" ? otpSmsService(phoneNumber, otpVerification.otp_code, appHash) : null,
+      // ]);
+
+      // if (messageType === "sms" && smsResult?.error) {
+      //   return {
+      //     status: 500,
+      //     data: [],
+      //     error: {
+      //       message: i18n.__("SMS_SEND_FAILED"),
+      //       reason: smsResult.error,
+      //     },
+      //   };
+      // }
+
+      // if (messageType === "whatsapp" && whatsappResult?.error) {
+      //   return {
+      //     status: 500,
+      //     data: [],
+      //     error: {
+      //       message: i18n.__("WHATSAPP_SEND_FAILED"),
+      //       reason: whatsappResult.error,
+      //     },
+      //   };
+      // }
+
+      return {
+        status: 200,
+        data: { whatsapp: null, sms: null, otpCode: otpVerification.otp_code },
+        message: i18n.__("OTP_SENT_SUCCESSFULLY"),
+        error: {},
+      };
+    } catch (e) {
+      logger.error("ERROR In sendOtpToMobileNumber", { error: e });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+      return {
+        status: 500,
+        data: [],
+        error: { message: i18n.__("OTP_SEND_FAILED"), reason: e.message },
+      };
+    }
+
+
+
   }
 
   //* Verify OTP for login

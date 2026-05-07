@@ -37,12 +37,16 @@ const router = express.Router();
  *                 type: string
  *                 required: true
  *                 default: ""
+ *               licenseNumber:
+ *                 type: string
+ *                 required: true
+ *                 default: "KBY-08-000001"
  *     responses:
  *       200:
  *         description: OTP sent successfully
  */
 router.post("/send-otp", otpRateLimiter, async (req, res) => {
-  const response = await LoginController.sendOtpToMobileNumber({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+  const response = await LoginController.sendOtpToMobileNumberForApp({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
 
