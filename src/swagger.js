@@ -5,7 +5,7 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Koby tech silent guard API (Web)",
+      title: "Koby---tech silent guard API (Web)",
       version: "1.0.0",
       description: "API docs with Swagger for travel wallet",
     },
