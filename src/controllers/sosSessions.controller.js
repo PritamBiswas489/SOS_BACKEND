@@ -2,11 +2,15 @@ import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import "../config/environment.js";
 import SosSessionsService from "../services/sosSessions.service.js";
+ 
 
 export default class SosSessionsController {
   static async registerSosSession(request) {
     const { payload, headers, user } = request;
     const userid = user?.id;
+    const lat = payload?.latitude;
+    const lng = payload?.longitude;
+     
 
     return new Promise((resolve) => {
       SosSessionsService.registerSosSession(

@@ -56,6 +56,21 @@ export default function SosSessions(sequelize, DataTypes) {
         allowNull: false,
         defaultValue: false,
       },
+      latitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+        defaultValue: null,
+      },
+      longitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+        defaultValue: null,
+      },
+      location: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        defaultValue: null,
+      },
     },
     {
       tableName: "sos_sessions",

@@ -150,4 +150,30 @@ export default class ProfileController {
       };
     }
   }
+
+  static async getUserAnalytics(request) {
+    const { payload, headers, user } = request;
+    const userid = user?.id;
+    return new Promise((resolve) => {
+      UserService.getUserAnalytics(userid, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(err.message || "GET_USER_ANALYTICS_FAILED"),
+              reason: err.message,
+            },
+          });
+        }
+        return resolve({
+          status: 200,
+          data: response,
+          message: headers?.i18n.__("GET_USER_ANALYTICS_SUCCESSFUL"),
+          error: null,
+        });
+      }
+      );
+    });
+  }
 }

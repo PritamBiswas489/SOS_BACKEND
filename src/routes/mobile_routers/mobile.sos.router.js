@@ -20,6 +20,20 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - lat
+ *               - lng
+ *             properties:
+ *               latitude:
+ *                 type: number
+ *                 description: Latitude of the user's current location
+ *                 example: 22.5726
+ *                 default: 22.5726
+ *               longitude:
+ *                 type: number
+ *                 description: Longitude of the user's current location
+ *                 example: 88.3639
+ *                 default: 88.3639
  *     responses:
  *       200:
  *         description: SOS session registered successfully
@@ -394,6 +408,14 @@ router.post("/save-session-audio-file-name", async (req, res) => {
  *                 type: number
  *                 description: Stress score calculated from sensor data
  *                 example: 75.5
+ *               latitude:
+ *                 type: number
+ *                 description: Latitude of the user's current location
+ *                 example: 22.5726
+ *               longitude:
+ *                 type: number
+ *                 description: Longitude of the user's current location
+ *                 example: 88.3639
  *     responses:
  *       200:
  *         description: Stress SOS triggered successfully

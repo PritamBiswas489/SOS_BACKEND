@@ -6,6 +6,7 @@ import TrustedContactService from "./trustedContact.service.js";
 import { getProfileImage, promisify } from "../libraries/utility.js";
 import { enqueueBulk } from "../queues/notificationQueue.js";
 import { response } from "express";
+import { getLocationName, fetchNominatim, fetchGoogle } from "./addressFetch.service.js";
  
 const { Op, fn, col, User, SosSessions, SosSessionNotifications, Devices, SosSessionAudioRecords } = db;
 import { audioFileLink } from "../libraries/utility.js";
@@ -33,13 +34,15 @@ export default class SosSessionsService {
           hr: payload.hr,
           stress_score: payload.stress_score,
         } : activeSession.stress_data;
-        await activeSession.update({ number_of_trigger, stress_data });
+        await activeSession.update({ number_of_trigger, stress_data, latitude: payload.latitude || activeSession.latitude, longitude: payload.longitude || activeSession.longitude });
         const updatedSession = await activeSession.reload();
         newSosSession = updatedSession;
       } else {
         const sessionData = {
           user_id: userid,
           number_of_trigger: 1,
+          latitude: payload.latitude || null,
+          longitude: payload.longitude || null,
         };
         if(payload?.type === "stress"){
           sessionData.stress_data = {
@@ -53,6 +56,17 @@ export default class SosSessionsService {
           this.sendSosSessionNotificationProcess(newSosSession.id, payload?.type).catch((e) => {
             process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
             logger.error("ERROR In sendSosSessionNotificationProcess", { error: e });
+          });
+          (async () => {
+            if (newSosSession.latitude && newSosSession.longitude) {
+              const locationName = await getLocationName(newSosSession.latitude, newSosSession.longitude);
+              if (locationName) {
+                await newSosSession.update({ location: locationName });
+              }
+            }
+          })().catch((e) => {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+            logger.error("ERROR In getLocationName background update", { error: e });
           });
       }
       return callback(null, { data: newSosSession });
@@ -579,10 +593,10 @@ export default class SosSessionsService {
   static async triggerStressSos(request, callback) {
      try{
       const { payload, headers, user } = request;
-      const {hr, stress_score } = payload;
+      const {hr, stress_score, latitude, longitude } = payload;
       const userId = user?.id;
 
-      return await this.registerSosSession({ userid: userId, payload: { hr, stress_score, type: "stress" }, headers }, (err, response) => {
+      return await this.registerSosSession({ userid: userId, payload: { hr, stress_score, latitude, longitude, type: "stress" }, headers }, (err, response) => {
         if (err) {
           return callback(err, null);
         }

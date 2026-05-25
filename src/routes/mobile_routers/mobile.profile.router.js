@@ -28,6 +28,30 @@ router.get("/details", async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /api-mobile/auth/user/profile/analytics:
+ *   get:
+ *     summary: Get user analytics data
+ *     tags:
+ *       - User authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: User analytics data retrieved successfully
+ */
+router.get("/analytics", async (req, res) => {
+    const response = await ProfileController.getUserAnalytics({
+        payload: { ...req.params, ...req.query, ...req.body },
+        headers: req.headers,
+        user: req.user,
+      });
+      res.return(response);
+});
+
+
 
 /**
  * @swagger

@@ -538,5 +538,7 @@
 	"ACCOUNT_ACCESSED_FROM_NEW_DEVICE": "You logged in from a new device.",
 	"YOUR_ACCOUNT_WAS_ACCESSED_FROM_ANOTHER_DEVICE": "Your account was accessed from another device. If this wasn't you, contact support immediately.",
 	"CHECK_DEVICE_ID_SUCCESSFUL": "Check device ID successful.",
-	"LICENSE_NUMBER_MISSING_OR_INVALID": "License number is missing or invalid."
+	"LICENSE_NUMBER_MISSING_OR_INVALID": "License number is missing or invalid.",
+	"GET_USER_ANALYTICS_SUCCESSFUL": "GET_USER_ANALYTICS_SUCCESSFUL",
+	"GET_USER_ANALYTICS_FAILED": "GET_USER_ANALYTICS_FAILED"
 }
