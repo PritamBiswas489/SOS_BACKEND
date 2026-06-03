@@ -48,7 +48,7 @@ const app = express();
 
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === "development") {
-    const REQUIRED_NODE_VERSION = "20.19.4"; // Define your required version
+    const REQUIRED_NODE_VERSION = "20.20.2"; // Define your required version
     const CURRENT_NODE_VERSION = process.versions.node; // Get current Node.js version
 
     console.log(" Required node version", REQUIRED_NODE_VERSION);
