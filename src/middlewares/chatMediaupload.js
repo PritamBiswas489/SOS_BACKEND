@@ -13,7 +13,19 @@ const ensureDir = (dir) => {
 const ALLOWED_MIME_TYPES = {
   image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   video: ['video/mp4', 'video/quicktime', 'video/webm'],
-  audio: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/aac'],
+  audio: [
+    'audio/mpeg',
+    'audio/wav',
+    'audio/vnd.wave',
+    'audio/ogg',
+    'audio/aac',
+    'audio/x-aac',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/m4a',
+    'audio/x-caf',
+    'audio/aiff',
+  ],
   document: [
     'application/pdf',
     'application/msword',
