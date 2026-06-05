@@ -112,6 +112,7 @@ export default class ChatService {
         recipientId: msg.recipient_id,
         text: msg.text,
         mediaUrl: msg.media_url,
+        isMov: /\.mov$/i.test(msg.media_url || ""),
         mediaType: msg.media_type,
         replyTo: msg.reply_to,
         status: msg.status,

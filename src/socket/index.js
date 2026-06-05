@@ -200,6 +200,7 @@ export const initSocketServer = async (httpServer) => {
 
     socket.on("join:room", async (payload) => {
       const { roomId } = JSON.parse(payload);
+      console.log(payload); 
       
       // Check if socket is already in the room
       if (socket.rooms.has(roomId)) {

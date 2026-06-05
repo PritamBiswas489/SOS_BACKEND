@@ -66,6 +66,7 @@ export const registerChatHandlers = (io, socket) => {
         recipientId: dbMessage.recipient_id,
         text: dbMessage.text,
         mediaUrl: dbMessage.media_url,
+        isMov: /\.mov$/i.test(dbMessage.media_url || ""),
         mediaType: dbMessage.media_type,
         replyTo: dbMessage.reply_to,
         reply_to_message: replyToMessage,
