@@ -53,11 +53,30 @@ export default class PushNotificationService {
       return { successCount: 0, failureCount: 0, invalidTokens: [] };
     const message = {
       tokens: tokens,
-      notification: {
-          title: payload.title,
-          body: payload.body,
+
+       
+      data: {
+        ...payload.data,
+        title: payload.title,    
+        body: payload.body,      
       },
-      data: payload.data,
+
+      android: {
+        priority: 'high',        
+        ttl: 30 * 1000,         
+      },
+
+      apns: {
+        payload: {
+          aps: {
+            sound: payload.sound || 'default',   
+            contentAvailable: true,
+          },
+        },
+        headers: {
+          'apns-priority': '10',
+        },
+      },
     };
     let response;
     try {
@@ -76,42 +95,42 @@ export default class PushNotificationService {
       throw err;
     }
 
-     const invalidTokens = [];
-  const results = response.responses;
+    const invalidTokens = [];
+    const results = response.responses;
 
-  results.forEach((res, idx) => {
-    if (!res.success) {
-      const code = res.error?.code;
-      if (
-        code === 'messaging/invalid-registration-token' ||
-        code === 'messaging/registration-token-not-registered'
-      ) {
-        invalidTokens.push(tokens[idx]);
-      } else {
-        console.error('FCM token error', {
-          token: tokens[idx].slice(-8),
-          code,
-          message: res.error?.message,
-        });
+    results.forEach((res, idx) => {
+      if (!res.success) {
+        const code = res.error?.code;
+        if (
+          code === 'messaging/invalid-registration-token' ||
+          code === 'messaging/registration-token-not-registered'
+        ) {
+          invalidTokens.push(tokens[idx]);
+        } else {
+          console.error('FCM token error', {
+            token: tokens[idx].slice(-8),
+            code,
+            message: res.error?.message,
+          });
+        }
       }
+    });
+
+    // Persist invalid tokens to Redis set for async cleanup
+    if (invalidTokens.length > 0) {
+      const redis = redisClient.duplicate();
+      await redis.sadd(INVALID_TOKEN_KEY, ...invalidTokens);
+      console.log(`Flagged ${invalidTokens.length} invalid tokens for cleanup`);
     }
-  });
 
-  // Persist invalid tokens to Redis set for async cleanup
-  if (invalidTokens.length > 0) {
-    const redis = redisClient.duplicate();
-    await redis.sadd(INVALID_TOKEN_KEY, ...invalidTokens);
-    console.log(`Flagged ${invalidTokens.length} invalid tokens for cleanup`);
-  }
-
-  return {
-    successCount: response.successCount,
-    failureCount: response.failureCount,
-    invalidTokens,
-  };
+    return {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+      invalidTokens,
+    };
 
 
-    
+
   }
   static async sendNotificationByFcmToken(
     { fcmToken, title, body, data = {} },
@@ -119,18 +138,37 @@ export default class PushNotificationService {
   ) {
     try {
       const message = {
-        notification: {
-          title: title,
-          body: body,
-        },
         token: fcmToken,
-        data,
+        data: {
+          ...data,
+          title: String(title || ''),        // ✅ must be string
+          body: String(body || ''),          // ✅ must be string
+          messageType: String(data?.messageType || 'DEFAULT'), // ✅ for channel picking
+        },
+
+        android: {
+          priority: 'high',                  // ✅ required for killed/doze state
+          ttl: 30 * 1000,                    // 30 seconds
+        },
+
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              contentAvailable: true,
+            },
+          },
+          headers: {
+            'apns-priority': '10',
+          },
+        },
       };
+
       const response = await admin.messaging().send(message);
-      console.log("Successfully sent message:", response);
+      console.log('Successfully sent message:', response);
       return callback(null, { messageId: response, token: fcmToken });
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error('Error sending message:', error);
       return callback(error);
     }
   }
