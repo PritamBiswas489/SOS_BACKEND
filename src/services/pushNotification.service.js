@@ -49,89 +49,108 @@ export default class PushNotificationService {
     }
   }
   static async sendBatch(tokens, payload) {
-    if (!tokens?.length)
-      return { successCount: 0, failureCount: 0, invalidTokens: [] };
-    const message = {
-      tokens: tokens,
+  if (!tokens?.length)
+    return { successCount: 0, failureCount: 0, invalidTokens: [] };
 
-       
-      data: {
-        ...payload.data,
-        title: payload.title,    
-        body: payload.body,      
+  // Determine notification tone based on message type
+  let chattone = "default_tone";
+  if (payload.data?.messageType === "SOS") {
+    chattone = "sos_alert";
+  } else if (payload.data?.messageType === "CHAT") {
+    chattone = "chat_tone";
+  } else if (payload.data?.messageType === "VICTIM") {
+    chattone = "victim_tone";
+  }
+
+  console.log("Selected notification tone:", payload.data?.messageType, chattone);
+
+  const message = {
+    tokens,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+    },
+    data: {
+      ...payload.data,
+      title: payload.title,
+      body: payload.body,
+    },
+    android: {
+      priority: "high",
+      ttl: 30 * 1000,
+      notification: {
+        sound: chattone,
       },
-
-      android: {
-        priority: 'high',        
-        ttl: 30 * 1000,         
-      },
-
-      apns: {
-        payload: {
-          aps: {
-            sound: payload.sound || 'default',   
-            contentAvailable: true,
+    },
+    apns: {
+      payload: {
+        aps: {
+          alert: {
+            title: payload.title,
+            body: payload.body,
           },
-        },
-        headers: {
-          'apns-priority': '10',
+          sound: chattone,
         },
       },
-    };
-    let response;
-    try {
-      const messaging = admin.messaging();
-      if (typeof messaging.sendEachForMulticast === 'function') {
-        response = await messaging.sendEachForMulticast(message);
-      } else {
-        response = await messaging.sendMulticast(message);
-      }
-      console.log("Batch notification response:", {
-        successCount: response.successCount,
-        failureCount: response.failureCount,
-      });
-    } catch (err) {
-      console.error("FCM multicast fatal error", { message: err.message });
-      throw err;
+      headers: {
+        "apns-priority": "10",
+      },
+    },
+  };
+
+  console.log("========================================");
+  console.log("message", message);
+
+  let response;
+  try {
+    const messaging = admin.messaging();
+    if (typeof messaging.sendEachForMulticast === "function") {
+      response = await messaging.sendEachForMulticast(message);
+    } else {
+      response = await messaging.sendMulticast(message);
     }
-
-    const invalidTokens = [];
-    const results = response.responses;
-
-    results.forEach((res, idx) => {
-      if (!res.success) {
-        const code = res.error?.code;
-        if (
-          code === 'messaging/invalid-registration-token' ||
-          code === 'messaging/registration-token-not-registered'
-        ) {
-          invalidTokens.push(tokens[idx]);
-        } else {
-          console.error('FCM token error', {
-            token: tokens[idx].slice(-8),
-            code,
-            message: res.error?.message,
-          });
-        }
-      }
-    });
-
-    // Persist invalid tokens to Redis set for async cleanup
-    if (invalidTokens.length > 0) {
-      const redis = redisClient.duplicate();
-      await redis.sadd(INVALID_TOKEN_KEY, ...invalidTokens);
-      console.log(`Flagged ${invalidTokens.length} invalid tokens for cleanup`);
-    }
-
-    return {
+    console.log("Batch notification response:", {
       successCount: response.successCount,
       failureCount: response.failureCount,
-      invalidTokens,
-    };
-
-
-
+    });
+  } catch (err) {
+    console.error("FCM multicast fatal error", { message: err.message });
+    throw err;
   }
+
+  const invalidTokens = [];
+
+  response.responses.forEach((res, idx) => {
+    if (!res.success) {
+      const code = res.error?.code;
+      if (
+        code === "messaging/invalid-registration-token" ||
+        code === "messaging/registration-token-not-registered"
+      ) {
+        invalidTokens.push(tokens[idx]);
+      } else {
+        console.error("FCM token error", {
+          token: tokens[idx].slice(-8),
+          code,
+          message: res.error?.message,
+        });
+      }
+    }
+  });
+
+  // Persist invalid tokens to Redis set for async cleanup
+  if (invalidTokens.length > 0) {
+    const redis = redisClient.duplicate();
+    await redis.sadd(INVALID_TOKEN_KEY, ...invalidTokens);
+    console.log(`Flagged ${invalidTokens.length} invalid tokens for cleanup`);
+  }
+
+  return {
+    successCount: response.successCount,
+    failureCount: response.failureCount,
+    invalidTokens,
+  };
+}
   static async sendNotificationByFcmToken(
     { fcmToken, title, body, data = {} },
     callback,
@@ -163,6 +182,7 @@ export default class PushNotificationService {
           },
         },
       };
+       console.log("message", message);
 
       const response = await admin.messaging().send(message);
       console.log('Successfully sent message:', response);
