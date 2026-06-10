@@ -112,8 +112,8 @@ export const otpWhatsappService = async (number, otp_code) => {
  */
 export const otpSmsService = async (number, otp_code, appHash) => {
      try {
-         const accountSid = process.env.TWILLO_ACCOUNT_SID;
-        const authToken = process.env.TWILLO_AUTH_TOKEN;
+         const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
         console.log("Twilio Account SID:", accountSid);
         console.log("Twilio Auth Token:", authToken);
         const client = twilio(accountSid, authToken);

@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { createSocket as createUdpSocket } from "dgram";
 import { getProfileImage } from "../libraries/utility.js";
 import SosSessionsService from "../services/sosSessions.service.js";
+import twilio from "twilio";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,16 +47,41 @@ const getIceServers = () => [
     credential: process.env.TURN_SERVER_CREDENTIAL,
   },
 ];
+const getTwilioIceServers = async () => {
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  const token = await client.tokens.create();
+   
+  return token.iceServers.map((s) => {
+  const server = { urls: s.urls };
+  if (s.username) server.username = s.username;
+  if (s.credential) server.credential = s.credential;
+  return server;
+});
+}
 
-const getWebRtcTransportOptions = () => ({
-  listenIps: [{ ip: "0.0.0.0", announcedIp: process.env.ANNOUNCED_IP }],
-  enableUdp: true,
-  enableTcp: true,
-  preferUdp: true,
-  initialAvailableOutgoingBitrate: 600000,
-  maxIncomingBitrate: 1500000,
-  iceServers: getIceServers(),
-});  
+const getWebRtcTransportOptions = async() => {
+  const iceServers = await getIceServers();
+  console.log("Using ICE servers:", iceServers);
+  return {
+    listenIps: [
+    process.env.NODE_ENV === "production"
+      ? { 
+        ip: "0.0.0.0", 
+        announcedIp: process.env.ANNOUNCED_IP 
+      } // your server's public IP
+      : {  
+        ip: "0.0.0.0",
+        announcedIp: "192.168.29.39" 
+      } // localhost — no announcedIp needed
+    ],
+    enableUdp: true,
+    enableTcp: true,
+    preferUdp: true,
+    initialAvailableOutgoingBitrate: 600000,
+    maxIncomingBitrate: 1500000,
+    iceServers: iceServers,
+  };
+};  
 
 // ─── Recording helpers ───────────────────────────────────────────────────────
 
@@ -616,7 +642,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       
 
       const transport = await room.router.createWebRtcTransport(
-        getWebRtcTransportOptions()
+        await getWebRtcTransportOptions()
       );
 
       await transport.setMaxIncomingBitrate(200000);

@@ -157,57 +157,54 @@ export default class PushNotificationService {
     };
   }
   static async sendBatch(tokens, payload) {
+    console.log("sendBatch called with tokens:", tokens, "payload:", payload);
     if (!tokens?.length) {
-      return {
-        successCount: 0,
-        failureCount: 0,
-        invalidTokens: [],
-      };
+      return { successCount: 0, failureCount: 0, invalidTokens: [] };
     }
 
     const invalidTokens = [];
     let successCount = 0;
     let failureCount = 0;
-
-    for (const token of tokens) {
-      console.log("========================================");
-      console.log("message",{
-            ...payload.data,
-            title: String(payload.title || ''),
-            body: String(payload.body || ''),
-            messageType: String(
-              payload.data?.messageType || 'DEFAULT'
-            ),
-          })
+    const uniqueTokens = [...new Set(tokens)];
+    for (const token of uniqueTokens) {
       try {
-        await admin.messaging().send({
+        const message = {
           token,
+
+          // Remove notification block completely
           data: {
             ...payload.data,
             title: String(payload.title || ''),
             body: String(payload.body || ''),
-            messageType: String(
-              payload.data?.messageType || 'DEFAULT'
-            ),
+            messageType: String(payload.data?.messageType || 'DEFAULT'),
           },
 
           android: {
             priority: 'high',
             ttl: 30 * 1000,
+            notification: {
+              title: String(payload.title || ''),
+              body: String(payload.body || ''),
+              sound: payload.data?.messageType === 'SOS' ? 'sos_alert' : 'default_tone',
+            },
           },
 
           apns: {
             payload: {
               aps: {
-                sound: 'default',
-                contentAvailable: true,
+                'content-available': 1,
+                'mutable-content': 1,
               },
             },
             headers: {
-              'apns-priority': '10',
+              'apns-priority': '5',
+              'apns-push-type': 'background',
             },
           },
-        });
+        };
+
+        //console.log('FCM RAW PAYLOAD:', JSON.stringify(message, null, 2));
+        await admin.messaging().send(message);
 
         successCount++;
       } catch (err) {
@@ -231,16 +228,10 @@ export default class PushNotificationService {
     if (invalidTokens.length > 0) {
       const redis = redisClient.duplicate();
       await redis.sadd(INVALID_TOKEN_KEY, ...invalidTokens);
-      console.log(
-        `Flagged ${invalidTokens.length} invalid tokens for cleanup`
-      );
+      console.log(`Flagged ${invalidTokens.length} invalid tokens for cleanup`);
     }
 
-    return {
-      successCount,
-      failureCount,
-      invalidTokens,
-    };
+    return { successCount, failureCount, invalidTokens };
   }
   static async sendNotificationByFcmToken(
     { fcmToken, title, body, data = {} },
