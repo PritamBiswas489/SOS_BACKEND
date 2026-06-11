@@ -198,7 +198,9 @@ export default class SosSessionsService {
             body: notificationBody,
             data: {
               messageType:'SOS',
-              fetchSOS:'1'
+              fetchSOS:'1',
+              fromUserId: sosSession?.user_id,
+              type: type || "normal",
             }
           });
         }
