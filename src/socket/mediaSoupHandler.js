@@ -59,20 +59,16 @@ const getTwilioIceServers = async () => {
 });
 }
 
-const getWebRtcTransportOptions = async() => {
-  const iceServers = await getIceServers();
+const getWebRtcTransportOptions =  () => {
+  const iceServers =   getIceServers();
   console.log("Using ICE servers:", iceServers);
   return {
     listenIps: [
-    process.env.NODE_ENV === "production"
-      ? { 
+   
+     { 
         ip: "0.0.0.0", 
         announcedIp: process.env.ANNOUNCED_IP 
-      } // your server's public IP
-      : {  
-        ip: "0.0.0.0",
-        announcedIp: "192.168.29.39" 
-      } // localhost — no announcedIp needed
+      } 
     ],
     enableUdp: true,
     enableTcp: true,
@@ -642,7 +638,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       
 
       const transport = await room.router.createWebRtcTransport(
-        await getWebRtcTransportOptions()
+          getWebRtcTransportOptions()
       );
 
       await transport.setMaxIncomingBitrate(200000);
