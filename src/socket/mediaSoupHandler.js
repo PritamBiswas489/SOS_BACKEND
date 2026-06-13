@@ -37,14 +37,13 @@ const mediaCodecs = [
     },
   },
 ];
-
 // ─── ICE / STUN / TURN config ────────────────────────────────────────────────
 
 const getIceServers = () => [
   { urls: "stun:stun.l.google.com:19302" },
   {
     urls: [
-      `turn:${process.env.TURN_SERVER_HOST}:3478`,
+      `turn:${process.env.TURN_SERVER_HOST}:3478`, 
       `turn:${process.env.TURN_SERVER_HOST}:3478?transport=tcp`,
       `turns:${process.env.TURN_SERVER_HOST}:5349`,
     ],
@@ -64,13 +63,25 @@ const getTwilioIceServers = async () => {
 });
 }
 
-const getWebRtcTransportOptions = () => ({
-  listenIps: [{ ip: "0.0.0.0", announcedIp: process.env.ANNOUNCED_IP }],
-  enableUdp: true,
-  enableTcp: true,
-  preferUdp: true,
-  initialAvailableOutgoingBitrate: 600000,
-});
+const getWebRtcTransportOptions =  () => {
+  const iceServers =   getIceServers();
+  console.log("Using ICE servers:", iceServers);
+  return {
+    listenIps: [
+  
+     { 
+        ip: "0.0.0.0", 
+        announcedIp: process.env.ANNOUNCED_IP 
+      } 
+    ],
+    enableUdp: true,
+    enableTcp: true,
+    preferUdp: true,
+    initialAvailableOutgoingBitrate: 600000,
+    maxIncomingBitrate: 1500000,
+    iceServers: iceServers,
+  };
+};  
 
 // ─── Recording helpers ───────────────────────────────────────────────────────
 
@@ -682,12 +693,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
 
         if (!transport) return callback({ error: "Transport not found" });
 
-        await transport.connect({ 
-          dtlsParameters: {
-            ...dtlsParameters,
-            role: 'server',
-          }
-        });
+        await transport.connect({ dtlsParameters });
         callback({});
       } catch (err) {
         console.error("❌ ms:connect-transport error", err);
