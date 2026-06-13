@@ -30,6 +30,11 @@ const mediaCodecs = [
     mimeType: "audio/opus",
     clockRate: 48000,
     channels: 2,
+    parameters: {
+      "minptime": 10,
+      "useinbandfec": 1,
+      "usedtx": 0,
+    },
   },
 ];
 
@@ -59,25 +64,13 @@ const getTwilioIceServers = async () => {
 });
 }
 
-const getWebRtcTransportOptions =  () => {
-  const iceServers =   getIceServers();
-  console.log("Using ICE servers:", iceServers);
-  return {
-    listenIps: [
-   
-     { 
-        ip: "0.0.0.0", 
-        announcedIp: process.env.ANNOUNCED_IP 
-      } 
-    ],
-    enableUdp: true,
-    enableTcp: true,
-    preferUdp: true,
-    initialAvailableOutgoingBitrate: 600000,
-    maxIncomingBitrate: 1500000,
-    iceServers: iceServers,
-  };
-};  
+const getWebRtcTransportOptions = () => ({
+  listenIps: [{ ip: "0.0.0.0", announcedIp: process.env.ANNOUNCED_IP }],
+  enableUdp: true,
+  enableTcp: true,
+  preferUdp: true,
+  initialAvailableOutgoingBitrate: 600000,
+});
 
 // ─── Recording helpers ───────────────────────────────────────────────────────
 
@@ -641,7 +634,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
           getWebRtcTransportOptions()
       );
 
-      await transport.setMaxIncomingBitrate(200000);
+      await transport.setMaxIncomingBitrate(1500000);
 
       // console.log(
       //   "ICE candidates:",
@@ -689,7 +682,12 @@ export const registerMediaSoupHandler = async (io, socket) => {
 
         if (!transport) return callback({ error: "Transport not found" });
 
-        await transport.connect({ dtlsParameters });
+        await transport.connect({ 
+          dtlsParameters: {
+            ...dtlsParameters,
+            role: 'server',
+          }
+        });
         callback({});
       } catch (err) {
         console.error("❌ ms:connect-transport error", err);
@@ -766,7 +764,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       const consumer = await transport.consume({
         producerId: room.producer.id,
         rtpCapabilities,
-        paused: false,
+        paused: true, // was false
       });
 
       room.transports[socket.id].consumer = consumer;
