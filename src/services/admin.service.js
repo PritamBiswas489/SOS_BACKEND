@@ -444,7 +444,7 @@ export default class AdminService {
       if (status === "approved") {
         // Bug 4 fixed: use actual ngo_id instead of hardcoded "00"
         const ngoId = kycDocument.ngo_id; // ensure this field exists on the document
-        const licenseNumber = `KBY-00-${String(kycDocument.user_id).padStart(6, "0")}`;
+        const licenseNumber = `KBY-${String(kycDocument.user_id).padStart(6, "0")}`;
         await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
         const license = await Licenses.create(
           {

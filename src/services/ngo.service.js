@@ -198,7 +198,7 @@ export default class NgoService {
       );
 
       // 7. Create license
-      const licenseNumber = `KBY-${String(ngo_id).padStart(2, "0")}-${String(newRegisteredCount).padStart(6, "0")}`;
+      const licenseNumber = `KBY-${String(newRegisteredCount).padStart(6, "0")}`;
       const license = await Licenses.create(
         {
           user_id: createUser.id,

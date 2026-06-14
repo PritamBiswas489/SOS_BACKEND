@@ -41,7 +41,7 @@ const router = express.Router();
  *                 default: ""
  *               licenseNumber:
  *                 type: string
- *                 default: "KBY-08-000001"
+ *                 default: "KBY-000001"
  *     responses:
  *       200:
  *         description: OTP sent successfully
