@@ -1,0 +1,44 @@
+#create new table
+node create-migration.js remove_license_table_key_unique_key
+# Run all migrations
+node migrate.js up
+
+# Undo the last migration
+node migrate.js down
+
+# Roll back all migrations
+node migrate.js reset
+
+
+
+node migrate.js specific 20250717080652-create-settings.js
+
+
+node migrate.js check
+
+
+1️⃣ Abort the rebase and discard all changes
+
+This will stop the rebase and leave your branch as it was before starting it:
+
+git rebase --abort
+
+Then, if you still want to make your local copy match GitHub’s:
+
+git fetch origin
+git reset --hard origin/main
+
+2️⃣ Finish the rebase
+
+If you actually want to keep the changes and complete the rebase:
+
+git add .
+git rebase --continue
+
+Repeat until the rebase finishes.
+
+Since you said you want to clear all pending commits and match GitHub, option 1 is the safest — abort the rebase, then hard reset.
+
+Do you want me to give you the exact one-shot command to force your branch to match GitHub and exit this rebase immediately?
+
+
