@@ -427,10 +427,9 @@ export default class AdminService {
         transaction,
         lock: transaction.LOCK.UPDATE, // also add a lock since we're about to mutate
       });
+
+       
      
-
-
-
       // Bug 2 fixed: rollback before returning
       if (!kycDocument) {
         await transaction.rollback();
@@ -444,7 +443,7 @@ export default class AdminService {
       if (status === "approved") {
         // Bug 4 fixed: use actual ngo_id instead of hardcoded "00"
         const ngoId = kycDocument.ngo_id; // ensure this field exists on the document
-        const licenseNumber = `KBY-${String(kycDocument.user_id).padStart(6, "0")}`;
+        const licenseNumber  = `KBY-${ (String(kycDocument.user_id).length > 6 ? '1' : String(kycDocument.user_id)).padStart(6, "0")}`;
         await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
         const license = await Licenses.create(
           {

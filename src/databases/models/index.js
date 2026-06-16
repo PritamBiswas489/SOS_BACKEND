@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { readdirSync } from 'fs';
 import { dirname, join, basename as _basename } from 'path';
 import chalk from 'chalk';
-import { Sequelize, DataTypes, Op, col, fn } from 'sequelize';
+import { Sequelize, DataTypes, Op, col, fn, QueryTypes } from 'sequelize';
 import relation from './relation.js';
 import logger from '../../config/winston.js';
 
@@ -56,5 +56,7 @@ db.fn = fn;
 db.Sequelize = Sequelize;
 // Sequelize instance is added to the db object for easy access
 db.sequelize = sequelize;
+
+db.QueryTypes = QueryTypes;
 
 export default db;

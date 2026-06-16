@@ -6,6 +6,7 @@ import { default as TrustedContactRouter } from './mobile.trustedContact.router.
 import { default as ChatRouter } from './mobile.chat.router.js';
 import {default as sosRouter} from './mobile.sos.router.js';
 import {default as healthRouter} from './mobile.health.router.js';
+import { default as emergencyServicesRouter } from './mobile.emergencyServices.router.js';
  
 const router = express.Router();
 
@@ -15,5 +16,5 @@ router.use("/trusted-contact", TrustedContactRouter);
 router.use("/chat", ChatRouter);
 router.use("/sos", sosRouter);
 router.use("/health", healthRouter);
-
+router.use("/emergency-services", emergencyServicesRouter);
 export default router;

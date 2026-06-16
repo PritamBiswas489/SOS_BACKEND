@@ -1,5 +1,5 @@
 #create new table
-node create-migration.js remove_license_table_key_unique_key
+node create-migration.js new_table_emergency_services
 # Run all migrations
 node migrate.js up
 

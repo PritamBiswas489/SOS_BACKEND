@@ -540,5 +540,19 @@
 	"CHECK_DEVICE_ID_SUCCESSFUL": "Check device ID successful.",
 	"LICENSE_NUMBER_MISSING_OR_INVALID": "License number is missing or invalid.",
 	"GET_USER_ANALYTICS_SUCCESSFUL": "GET_USER_ANALYTICS_SUCCESSFUL",
-	"GET_USER_ANALYTICS_FAILED": "GET_USER_ANALYTICS_FAILED"
+	"GET_USER_ANALYTICS_FAILED": "GET_USER_ANALYTICS_FAILED",
+	"LOCATIONNAME_IS_REQUIRED": "Location name is required.",
+	"LATITUDE_IS_REQUIRED": "Latitude is required.",
+	"LONGITUDE_IS_REQUIRED": "Longitude is required.",
+	"ADDRESS_IS_REQUIRED": "Address is required.",
+	"PHONENUMBER_IS_REQUIRED": "Phone number is required.",
+	"PLACEID_IS_REQUIRED": "Place ID is required.",
+	"SERVICETYPE_IS_REQUIRED": "Service type is required.",
+	"VALID_LATITUDE_IS_REQUIRED": "Please provide a valid latitude.",
+	"VALID_LONGITUDE_IS_REQUIRED": "Please provide a valid longitude.",
+	"EMERGENCY_SERVICE_WITH_THIS_PLACE_ID_ALREADY_EXISTS": "An emergency service with this place ID already exists.",
+	"REQUEST_REGISTER_NEW_EMERGENCY_SERVICE_SUCCESSFUL": "Emergency service registered successfully.",
+	"REQUEST_REGISTER_NEW_EMERGENCY_SERVICE_FAILED": "Failed to register emergency service.",
+	"GET_NEARBY_EMERGENCY_SERVICES_SUCCESSFUL": "Nearby emergency services fetched successfully.",
+	"GET_NEARBY_EMERGENCY_SERVICES_FAILED": "Failed to fetch nearby emergency services."
 }
