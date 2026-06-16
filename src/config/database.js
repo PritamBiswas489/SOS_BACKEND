@@ -11,7 +11,7 @@ const dbConfig = {
     dialectOptions: {
       ssl: false, // ✅ force disable SSL
     },
-    logging: true,
+    logging: false,
   },
 };
 

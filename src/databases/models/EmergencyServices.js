@@ -45,14 +45,11 @@ export default function EmergencyServices(sequelize, DataTypes) {
 				type: DataTypes.STRING(30),
 				allowNull: false,
 			},
-            serviceType: {
+			serviceType: {
 				type: DataTypes.STRING(100),
 				allowNull: false,
 			},
-			location: {
-				type: DataTypes.GEOGRAPHY("POINT", 4326),
-				allowNull: false,
-			},
+		
 			createdAt: {
 				type: DataTypes.DATE,
 				allowNull: false,
@@ -68,10 +65,10 @@ export default function EmergencyServices(sequelize, DataTypes) {
 			tableName: "emergency_services",
 			timestamps: false,
 			indexes: [
+				// ✅ replaces GIST index on location
 				{
-					name: "idx_emergency_services_location",
-					fields: ["location"],
-					using: "GIST",
+					name: "idx_emergency_services_lat_lng",
+					fields: ["latitude", "longitude"],
 				},
 				{
 					name: "idx_emergency_services_service_type",

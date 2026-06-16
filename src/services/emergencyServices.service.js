@@ -76,77 +76,88 @@ export default class EmergencyServicesService {
         }
     }
     static async getNearbyEmergencyServices({ payload }, callback) {
-        console.log("Getting nearby emergency services with payload:", payload);
-        const latitude = Number(payload.latitude);
-        const longitude = Number(payload.longitude);
-        const radius = Number(payload.radius) || 5000;
-        const limit = 100;
+    console.log("Getting nearby emergency services with payload:", payload);
+    const latitude = Number(payload.latitude);
+    const longitude = Number(payload.longitude);
+    const radiusKm = Number(payload.radius) || 5; // in KM
+    const limit = 100;
 
-        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-            return callback(new Error("VALID_LATITUDE_IS_REQUIRED"), null);
-        }
-        if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-            return callback(new Error("VALID_LONGITUDE_IS_REQUIRED"), null);
-        }
-        const serviceType = payload.serviceType || null;
-        const locations = await db.sequelize.query(
-            `
-  SELECT *
-FROM (
-    SELECT
-        id,
-        "locationName",
-        "serviceType",
-        "phoneNumber",
-        "latitude",
-        "longitude",
-        address,
-        ROUND(
-            (
-                ST_Distance(
-                    location,
-                    ST_SetSRID(
-                        ST_MakePoint(:lng, :lat),
-                        4326
-                    )::geography
-                ) / 1000
-            )::numeric,
-            2
-        ) AS distance_km
-    FROM emergency_services
-    WHERE ST_DWithin(
-        location,
-        ST_SetSRID(
-            ST_MakePoint(:lng, :lat),
-            4326
-        )::geography,
-        :radius
-    )
-    AND (
-        :serviceType IS NULL
-        OR "serviceType" = :serviceType
-    )
-) t
-ORDER BY distance_km ASC
-LIMIT :limit
-  `,
-            {
-                replacements: {
-                    lat: latitude,
-                    lng: longitude,
-                    radius: radius * 1000, // use the converted radius
-                    serviceType,
-                    limit 
-                },
-                type: db.Sequelize.QueryTypes.SELECT
-            }
-        );
-
-        return callback(null, {
-            data: locations,
-            message: "NEARBY_EMERGENCY_SERVICES_FETCHED_SUCCESSFULLY",
-        });
-
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+        return callback(new Error("VALID_LATITUDE_IS_REQUIRED"), null);
     }
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        return callback(new Error("VALID_LONGITUDE_IS_REQUIRED"), null);
+    }
+
+    const serviceType = payload.serviceType || null;
+
+    // bounding box delta (1 degree ≈ 111km)
+    const delta = radiusKm / 111;
+
+    const locations = await db.sequelize.query(
+        `
+        SELECT *
+        FROM (
+            SELECT
+                id,
+                "locationName",
+                "serviceType",
+                "phoneNumber",
+                "latitude",
+                "longitude",
+                address,
+                ROUND(
+                    CAST(
+                        6371 * acos(
+                            LEAST(1.0, 
+                                cos(radians(:lat)) * cos(radians(latitude)) *
+                                cos(radians(longitude) - radians(:lng)) +
+                                sin(radians(:lat)) * sin(radians(latitude))
+                            )
+                        ) AS numeric
+                    ), 2
+                ) AS distance_km
+            FROM emergency_services
+            WHERE
+                -- bounding box filter (uses index — fast)
+                latitude  BETWEEN :minLat AND :maxLat
+                AND longitude BETWEEN :minLng AND :maxLng
+                -- precise haversine filter on small subset
+                AND 6371 * acos(
+                    LEAST(1.0,
+                        cos(radians(:lat)) * cos(radians(latitude)) *
+                        cos(radians(longitude) - radians(:lng)) +
+                        sin(radians(:lat)) * sin(radians(latitude))
+                    )
+                ) <= :radiusKm
+                AND (
+                    :serviceType IS NULL
+                    OR "serviceType" = :serviceType
+                )
+        ) t
+        ORDER BY distance_km ASC
+        LIMIT :limit
+        `,
+        {
+            replacements: {
+                lat: latitude,
+                lng: longitude,
+                radiusKm,
+                minLat: latitude - delta,
+                maxLat: latitude + delta,
+                minLng: longitude - delta,
+                maxLng: longitude + delta,
+                serviceType,
+                limit,
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+        }
+    );
+
+    return callback(null, {
+        data: locations,
+        message: "NEARBY_EMERGENCY_SERVICES_FETCHED_SUCCESSFULLY",
+    });
+}
 
 }

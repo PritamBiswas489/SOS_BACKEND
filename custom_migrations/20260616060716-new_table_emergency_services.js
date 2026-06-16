@@ -47,14 +47,11 @@ export async function up(queryInterface, Sequelize) {
         type: Sequelize.STRING(30),
         allowNull: false,
       },
-       serviceType: {
+      serviceType: {
         type: Sequelize.STRING(100),
         allowNull: false,
       },
-      location: {
-        type: Sequelize.GEOGRAPHY("POINT", 4326),
-        allowNull: false,
-      },
+       
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -71,9 +68,9 @@ export async function up(queryInterface, Sequelize) {
     },
   );
 
-  await queryInterface.addIndex("emergency_services", ["location"], {
-    name: "idx_emergency_services_location",
-    using: "GIST",
+  // ✅ replaces GIST index — composite index for bounding box queries
+  await queryInterface.addIndex("emergency_services", ["latitude", "longitude"], {
+    name: "idx_emergency_services_lat_lng",
     supportsSearchPath: false,
   });
 
@@ -97,33 +94,25 @@ export async function down(queryInterface, Sequelize) {
   await queryInterface.removeIndex(
     "emergency_services",
     "idx_emergency_services_service_type_status",
-    {
-      supportsSearchPath: false,
-    },
+    { supportsSearchPath: false },
   );
 
   await queryInterface.removeIndex(
     "emergency_services",
     "idx_emergency_services_request_by",
-    {
-      supportsSearchPath: false,
-    },
+    { supportsSearchPath: false },
   );
 
   await queryInterface.removeIndex(
     "emergency_services",
     "idx_emergency_services_service_type",
-    {
-      supportsSearchPath: false,
-    },
+    { supportsSearchPath: false },
   );
 
   await queryInterface.removeIndex(
     "emergency_services",
-    "idx_emergency_services_location",
-    {
-      supportsSearchPath: false,
-    },
+    "idx_emergency_services_lat_lng",   // ✅ matches new index name
+    { supportsSearchPath: false },
   );
 
   await queryInterface.dropTable("emergency_services", {
