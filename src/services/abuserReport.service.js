@@ -1,0 +1,155 @@
+import "../config/environment.js";
+import db from "../databases/models/index.js";
+import * as Sentry from "@sentry/node";
+import logger from "../config/winston.js";
+
+const { Abusers, AbuserReports, AbuserReportEvidenceFiles, sequelize } = db;
+
+const parseBoolean = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "boolean") return value;
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return value;
+};
+
+export default class AbuserReportService {
+  static async registerNewAbuser({ userId, payload }, callback) {
+    try {
+      const abuser = await Abusers.create({
+        user_id: userId,
+        full_name: payload.full_name,
+        alias_name: payload.alias_name || null,
+        gender: payload.gender || null,
+        dob: payload.dob || null,
+        phone: payload.phone || null,
+        email: payload.email || null,
+        address: payload.address || null,
+        photo: payload.photo || null,
+      });
+
+      return callback(null, { data: abuser });
+    } catch (error) {
+      logger.error("ERROR In registerNewAbuser", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("REGISTER_ABUSER_FAILED"), null);
+    }
+  }
+
+  static async registerNewAbuserReport({ userId, payload }, callback) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const report = await AbuserReports.create(
+        {
+          user_id: userId,
+          abuser_id: payload.abuser_id,
+          abuse_type: payload.abuse_type || null,
+          incident_date: payload.incident_date || null,
+          incident_location: payload.incident_location || null,
+          description: payload.description || null,
+          witness_information: payload.witness_information || null,
+          threat_level: payload.threat_level || null,
+          history_of_violence: parseBoolean(payload.history_of_violence),
+          weapon_access: parseBoolean(payload.weapon_access),
+          restraining_order: parseBoolean(payload.restraining_order),
+          notes: payload.notes || null,
+        },
+        { transaction }
+      );
+
+      const evidenceFiles = Array.isArray(payload.evidence_files)
+        ? payload.evidence_files
+        : [];
+
+      if (evidenceFiles.length > 0) {
+        await AbuserReportEvidenceFiles.bulkCreate(
+          evidenceFiles.map((file) => ({
+            report_id: report.id,
+            file_type: file.file_type,
+            file_url: file.file_url,
+          })),
+          { transaction }
+        );
+      }
+
+      await transaction.commit();
+
+      const createdReport = await AbuserReports.findByPk(report.id, {
+        include: [
+          {
+            model: AbuserReportEvidenceFiles,
+            as: "evidence_files",
+          },
+        ],
+      });
+
+      return callback(null, { data: createdReport });
+    } catch (error) {
+      await transaction.rollback();
+      logger.error("ERROR In registerNewAbuserReport", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("REGISTER_ABUSER_REPORT_FAILED"), null);
+    }
+  }
+
+  static async getMyReports({ userId, payload }, callback) {
+    try {
+      const limit = payload.limit ? parseInt(payload.limit, 10) : 10;
+      const page = payload.page ? parseInt(payload.page, 10) : 1;
+      const offset = (page - 1) * limit;
+
+      const reports = await AbuserReports.findAll({
+        where: { user_id: userId },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+        include: [
+          {
+            model: AbuserReportEvidenceFiles,
+            as: "evidence_files",
+          },
+          {
+            model: Abusers,
+            as: "abuser",
+          }
+        ],
+      });
+
+      //update abuser profile image url with base url and evidance file url
+      reports.forEach((report) => {
+        if (report.evidence_files && report.evidence_files.length > 0) {
+          report.evidence_files.forEach((file) => {
+            file.file_url = `${process.env.BASE_URL}${file.file_url}`;
+          });
+        }
+        if(report?.abuser && report?.abuser?.photo) {
+          report.abuser.photo = `${process.env.BASE_URL}${report.abuser.photo}`;
+        }
+      });
+
+      return callback(null, { data: reports });
+    } catch (error) {
+      console.log("ERROR In getMyReports", error?.message || error);
+      logger.error("ERROR In getMyReports", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_ABUSER_REPORTS_FAILED"), null);
+    }
+  }
+  static async getExistingAbuser({ userId, payload }, callback) {
+    try {
+      const abuser = await Abusers.findAll({
+        where: {
+          user_id: userId,
+        },
+      });
+      return callback(null, { data: abuser });
+  }catch (error) {
+      logger.error("ERROR In getExistingAbuser", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_EXISTING_ABUSER_FAILED"), null);
+    }
+
+      
+  }
+}

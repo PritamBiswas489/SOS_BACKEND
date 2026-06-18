@@ -17,6 +17,7 @@ import basicAuth from "express-basic-auth";
 import multer from "multer";
 import customReturn from "./middlewares/responseBuilder.js";
 import locales from "./middlewares/locales.js";
+import { PROFILE_IMAGE_SIZE_ERROR_MESSAGE } from "./middlewares/profileImageUpload.js";
 import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
 import cookieParser from "cookie-parser";
@@ -334,9 +335,15 @@ app.use("/uploads", express.static("uploads"));
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
+      const profileImageFields = ["profile_image", "photo"];
+
       return res
         .status(400)
-        .json({ error: "File size should not exceed 2MB." });
+        .json({
+          error: profileImageFields.includes(err.field)
+            ? PROFILE_IMAGE_SIZE_ERROR_MESSAGE
+            : "File size should not exceed 2MB.",
+        });
     }
   } else if (err) {
     return res.status(400).json({ error: err.message });

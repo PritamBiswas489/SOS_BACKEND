@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -149,6 +149,48 @@ const relation = (db) => {
   HeartRateRecords.belongsTo(User, {
     foreignKey: "user_id",
     as: "user",
+  });
+
+  User.hasMany(Abusers, {
+    foreignKey: "user_id",
+    as: "abusers",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  Abusers.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
+
+  User.hasMany(AbuserReports, {
+    foreignKey: "user_id",
+    as: "abuser_reports",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  AbuserReports.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
+  Abusers.hasMany(AbuserReports, {
+    foreignKey: "abuser_id",
+    as: "reports",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  AbuserReports.belongsTo(Abusers, {
+    foreignKey: "abuser_id",
+    as: "abuser",
+  });
+  AbuserReports.hasMany(AbuserReportEvidenceFiles, {
+    foreignKey: "report_id",
+    as: "evidence_files",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  AbuserReportEvidenceFiles.belongsTo(AbuserReports, {
+    foreignKey: "report_id",
+    as: "report",
   });
 
 };

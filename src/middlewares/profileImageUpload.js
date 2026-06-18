@@ -11,6 +11,8 @@ const ensureDir = (dir) => {
 };
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+export const MAX_PROFILE_IMAGE_SIZE_MB = 20;
+export const PROFILE_IMAGE_SIZE_ERROR_MESSAGE = `Profile image size should not exceed ${MAX_PROFILE_IMAGE_SIZE_MB}MB.`;
 
 const storage = multer.diskStorage({
   destination: (_req, file, cb) => {
@@ -35,7 +37,7 @@ export const uploadProfileImage = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max
+    fileSize: MAX_PROFILE_IMAGE_SIZE_MB * 1024 * 1024,
     files: 1, // max 1 file per request
   },
 });

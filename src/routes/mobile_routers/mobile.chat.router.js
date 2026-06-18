@@ -3,7 +3,10 @@ import express from "express";
 import {
   uploadChatMedia,
   getMediaType,
+  getChatMediaFileSizeErrorMessage,
+  isChatMediaFileSizeValid,
 } from "../../middlewares/chatMediaupload.js";
+import fs from "fs";
 import ChatController from "../../controllers/chat.controller.js";
 import ChatService from "../../services/chat.service.js";
 import convertMovToMp4 from "../../libraries/movToMp4Converter.js";
@@ -59,10 +62,21 @@ const router = express.Router();
 router.post("/upload-media", (req, res) => {
   uploadChatMedia.single("file")(req, res, async function (err) {
     if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ error: getChatMediaFileSizeErrorMessage(req.chatMediaUploadMimetype) });
+      }
       return res.status(400).json({ error: err.message });
     }
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
+    }
+    if (!isChatMediaFileSizeValid(req.file)) {
+      fs.unlink(req.file.path, () => {});
+      return res
+        .status(400)
+        .json({ error: getChatMediaFileSizeErrorMessage(req.file.mimetype) });
     }
      
     const response = await ChatController.uploadChatMedia({

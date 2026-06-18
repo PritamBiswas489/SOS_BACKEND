@@ -1,5 +1,5 @@
 #create new table
-node create-migration.js new_table_emergency_services
+node create-migration.js new_table_app_feedback
 # Run all migrations
 node migrate.js up
 

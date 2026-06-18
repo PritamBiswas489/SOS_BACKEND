@@ -554,5 +554,17 @@
 	"REQUEST_REGISTER_NEW_EMERGENCY_SERVICE_SUCCESSFUL": "Emergency service registered successfully.",
 	"REQUEST_REGISTER_NEW_EMERGENCY_SERVICE_FAILED": "Failed to register emergency service.",
 	"GET_NEARBY_EMERGENCY_SERVICES_SUCCESSFUL": "Nearby emergency services fetched successfully.",
-	"GET_NEARBY_EMERGENCY_SERVICES_FAILED": "Failed to fetch nearby emergency services."
+	"GET_NEARBY_EMERGENCY_SERVICES_FAILED": "Failed to fetch nearby emergency services.",
+	"REGISTER_ABUSER_FAILED": "Failed to register abuser",
+	"REGISTER_ABUSER_SUCCESSFUL": "Abuser registered successfully",
+	"REGISTER_ABUSER_REPORT_FAILED": "Failed to register abuser report",
+	"REGISTER_ABUSER_REPORT_SUCCESSFUL": "Abuser report registered successfully",
+	"GET_ABUSER_REPORTS_FAILED": "Failed to get abuser reports",
+	"GET_ABUSER_REPORTS_SUCCESSFUL": "Abuser reports retrieved successfully",
+	"GET_EXISTING_ABUSER_FAILED": "Failed to get existing abuser",
+	"GET_EXISTING_ABUSER_SUCCESSFUL": "Existing abuser retrieved successfully",
+	"GET_SETTINGS_FAILED": "Failed to get settings",
+	"GET_SETTINGS_SUCCESSFUL": "Settings retrieved successfully",
+	"SUBMIT_FEEDBACK_FAILED": "Failed to submit feedback",
+	"SUBMIT_FEEDBACK_SUCCESSFUL": "Feedback submitted successfully"
 }

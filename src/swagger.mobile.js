@@ -45,7 +45,19 @@ const options = {
        {
         name: "Health routes",
         description: "Endpoints for health session management",
-      } 
+      },
+      {
+        name: "App feedback routes",
+        description: "Endpoints for app feedback management",
+      },
+      {
+        name: "Abuser report routes",
+        description: "Endpoints for abuser report management",
+      },
+      {
+        name: "Emergency services routes",
+        description: "Endpoints for emergency services management",
+      }
     ],
     servers: [
       {
