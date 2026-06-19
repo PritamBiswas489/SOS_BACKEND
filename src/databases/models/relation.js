@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles, AppFeedback, AppFeedbackAttachments } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -191,6 +191,16 @@ const relation = (db) => {
   AbuserReportEvidenceFiles.belongsTo(AbuserReports, {
     foreignKey: "report_id",
     as: "report",
+  });
+  AppFeedback.hasMany(AppFeedbackAttachments, {
+    foreignKey: "feedback_id",
+    as: "feedback_files",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  AppFeedbackAttachments.belongsTo(AppFeedback, {
+    foreignKey: "feedback_id",
+    as: "feedback",
   });
 
 };
