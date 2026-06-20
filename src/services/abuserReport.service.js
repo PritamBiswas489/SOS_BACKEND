@@ -15,6 +15,20 @@ const parseBoolean = (value) => {
   return value;
 };
 
+const fileExists = async (fileUrl) => {
+  if (!fileUrl) return false;
+
+  const relativeFilePath = fileUrl.replace(/^\//, "");
+  const absoluteFilePath = path.resolve(process.cwd(), relativeFilePath);
+
+  try {
+    await fs.access(absoluteFilePath);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 export default class AbuserReportService {
   static async registerNewAbuser({ userId, payload }, callback) {
     try {
@@ -119,16 +133,22 @@ export default class AbuserReportService {
       });
 
       //update abuser profile image url with base url and evidance file url
-      reports.forEach((report) => {
+      for (const report of reports) {
         if (report.evidence_files && report.evidence_files.length > 0) {
-          report.evidence_files.forEach((file) => {
-            file.file_url = `${process.env.BASE_URL}${file.file_url}`;
-          });
+          for (const file of report.evidence_files) {
+            if (file?.file_url && (await fileExists(file.file_url))) {
+              file.file_url = `${process.env.BASE_URL}${file.file_url}`;
+            }else{
+              file.file_url = null;
+            }
+          }
         }
-        if(report?.abuser && report?.abuser?.photo) {
+        if (report?.abuser?.photo && (await fileExists(report.abuser.photo))) {
           report.abuser.photo = `${process.env.BASE_URL}${report.abuser.photo}`;
+        }else{
+          report.abuser.photo = null;
         }
-      });
+      }
 
       return callback(null, { data: reports });
     } catch (error) {
@@ -146,11 +166,13 @@ export default class AbuserReportService {
         },
       });
       //process abuser profile image url with base url
-      abuser.forEach((abuser) => {
-        if (abuser?.photo) {
-          abuser.photo = `${process.env.BASE_URL}${abuser.photo}`;
+      for (const singleAbuser of abuser) {
+        if (singleAbuser?.photo && (await fileExists(singleAbuser.photo))) {
+          singleAbuser.photo = `${process.env.BASE_URL}${singleAbuser.photo}`;
+        }else{
+          singleAbuser.photo = null;
         }
-      });
+      }
       return callback(null, { data: abuser });
   }catch (error) {
       logger.error("ERROR In getExistingAbuser", { error });

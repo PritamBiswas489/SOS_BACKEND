@@ -9,6 +9,7 @@ import {
   isEvidenceFileSizeValid,
   uploadEvidenceFiles,
 } from '../../middlewares/evidenceUpload.js';
+import { reportAbuserApiRateLimiter } from '../../middlewares/otpRateLimiter.js';
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post('/register-new-abuser', uploadProfileImage.single('photo'), async (req, res) => {
+router.post('/register-new-abuser', reportAbuserApiRateLimiter, uploadProfileImage.single('photo'), async (req, res) => {
   const payload = { ...req.params, ...req.query, ...req.body };
   if (req.file) {
     payload.photo = `/uploads/profile_images/${req.file.filename}`;
@@ -172,7 +173,7 @@ router.post('/register-new-abuser', uploadProfileImage.single('photo'), async (r
  *       401:
  *         description: Unauthorized
  */
-router.post('/register-new-report', (req, res) => {
+router.post('/register-new-report', reportAbuserApiRateLimiter, (req, res) => {
   uploadEvidenceFiles.array('evidence_files', 3)(req, res, async function (err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {

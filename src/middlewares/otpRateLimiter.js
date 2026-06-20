@@ -2,28 +2,55 @@ import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import redisClient from "../config/redis.config.js";
 
-// Redis-backed rate limiter for OTP by phone number
-export const otpRateLimiter = rateLimit({
-  store: new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
-  }),
-  windowMs: 90 * 1000, // 90 seconds
-  max: 3, // limit to 3 requests per device
-  keyGenerator: (req) => req.deviceid,
-  handler: (req, res) => {
-    const i18n = req.headers.i18n;
-    console.log(
-      `Too many OTP requests from device ${req.deviceid}. IP: ${req.ip}`
-    );
-    res.set("Retry-After", 60); // suggest retry after 60 seconds
-    res.return({
-      status: 429,
-      data: [],
-      error: {
-        message: i18n.__("TOO_MANY_OTP_REQUESTS"),
-      },
-    });
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
+const createOtpRateLimiter = ({ windowMs, max, keyPrefix, retryAfter, errorKey }) =>
+  rateLimit({
+    store: new RedisStore({
+      sendCommand: (...args) => redisClient.call(...args),
+    }),
+    windowMs,
+    max,
+    keyGenerator: (req) => `${keyPrefix}_${req.deviceid}`,
+    handler: (req, res) => {
+      const i18n = req.headers.i18n;
+      console.log(
+        `Rate limit exceeded for device ${req.deviceid}. IP: ${req.ip}`
+      );
+      res.set("Retry-After", retryAfter);
+      res.return({
+        status: 429,
+        data: [],
+        error: {
+          message: i18n.__(errorKey),
+        },
+      });
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+// --- Per-route limiters ---
+
+export const otpRateLimiter = createOtpRateLimiter({
+  windowMs: 90 * 1000,
+  max: 3,
+  keyPrefix: "otp_short",
+  retryAfter: 60,
+  errorKey: "TOO_MANY_OTP_REQUESTS",
 });
+
+export const feedbackApiRateLimiter = createOtpRateLimiter({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  keyPrefix: "feedback_api",
+  retryAfter: 24 * 60 * 60,
+  errorKey: "DAILY_API_LIMIT_EXCEEDED",
+});
+
+export const reportAbuserApiRateLimiter = createOtpRateLimiter({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  keyPrefix: "report_abuser_api",
+  retryAfter: 24 * 60 * 60,
+  errorKey: "DAILY_API_LIMIT_EXCEEDED",
+});
+

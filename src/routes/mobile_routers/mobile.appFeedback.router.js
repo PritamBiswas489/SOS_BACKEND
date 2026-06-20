@@ -8,6 +8,7 @@ import {
   isFeedbackFileSizeValid,
   uploadFeedbackFiles,
 } from '../../middlewares/feedbackAttachment.js';
+import { feedbackApiRateLimiter } from '../../middlewares/otpRateLimiter.js';
 
 const router = express.Router();
 
@@ -58,7 +59,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post('/submit-feedback', (req, res) => {
+router.post('/submit-feedback', feedbackApiRateLimiter, (req, res) => {
   uploadFeedbackFiles.array('feedback_files', 3)(req, res, async function (err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
