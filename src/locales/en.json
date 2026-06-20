@@ -563,6 +563,8 @@
 	"GET_ABUSER_REPORTS_SUCCESSFUL": "Abuser reports retrieved successfully",
 	"GET_EXISTING_ABUSER_FAILED": "Failed to get existing abuser",
 	"GET_EXISTING_ABUSER_SUCCESSFUL": "Existing abuser retrieved successfully",
+	"DELETE_ABUSER_FAILED": "Failed to delete abuser",
+	"DELETE_ABUSER_SUCCESSFUL": "Abuser deleted successfully",
 	"GET_SETTINGS_FAILED": "Failed to get settings",
 	"GET_SETTINGS_SUCCESSFUL": "Settings retrieved successfully",
 	"SUBMIT_FEEDBACK_FAILED": "Failed to submit feedback",

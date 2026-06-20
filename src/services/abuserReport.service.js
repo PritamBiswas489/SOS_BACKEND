@@ -245,4 +245,95 @@ export default class AbuserReportService {
       return callback(new Error("DELETE_REPORT_FAILED"), null);
     }
   }
+
+  static async deleteAbuser({ userId, payload }, callback) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const abuserId = parseInt(payload.abuserId, 10);
+
+      if (!abuserId) {
+        await transaction.rollback();
+        return callback(new Error("ABUSER_ID_IS_REQUIRED"), null);
+      }
+
+      const abuser = await Abusers.findOne({
+        where: {
+          id: abuserId,
+          user_id: userId,
+        },
+        transaction,
+      });
+
+      if (!abuser) {
+        await transaction.rollback();
+        return callback(new Error("ABUSER_NOT_FOUND"), null);
+      }
+
+      const reports = await AbuserReports.findAll({
+        where: { abuser_id: abuser.id },
+        include: [
+          {
+            model: AbuserReportEvidenceFiles,
+            as: "evidence_files",
+          },
+        ],
+        transaction,
+      });
+
+      for (const report of reports) {
+        const evidenceFiles = report.evidence_files || [];
+        for (const file of evidenceFiles) {
+          if (!file?.file_url) continue;
+
+          const relativeFilePath = file.file_url.replace(/^\//, "");
+          const absoluteFilePath = path.resolve(process.cwd(), relativeFilePath);
+
+          try {
+            await fs.unlink(absoluteFilePath);
+          } catch (error) {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }
+        }
+      }
+
+      const reportIds = reports.map((report) => report.id);
+      if (reportIds.length > 0) {
+        await AbuserReportEvidenceFiles.destroy({
+          where: { report_id: reportIds },
+          transaction,
+        });
+
+        await AbuserReports.destroy({
+          where: { id: reportIds },
+          transaction,
+        });
+      }
+
+      if (abuser.photo) {
+        const relativePhotoPath = abuser.photo.replace(/^\//, "");
+        const absolutePhotoPath = path.resolve(process.cwd(), relativePhotoPath);
+
+        try {
+          await fs.unlink(absolutePhotoPath);
+        } catch (error) {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      }
+
+      await abuser.destroy({ transaction });
+      await transaction.commit();
+
+      return callback(null, { data: { abuserId: abuser.id, deletedReports: reportIds.length } });
+    } catch (error) {
+      await transaction.rollback();
+      logger.error("ERROR In deleteAbuser", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("DELETE_ABUSER_FAILED"), null);
+    }
+  }
 }
