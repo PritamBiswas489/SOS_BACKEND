@@ -13,6 +13,7 @@ const parseBoolean = (value) => {
 
 export default class AppFeedbackService {
     static async submitFeedback({ userId, payload }, callback) {
+        console.log("submitFeedback payload", payload);
         const transaction = await db.sequelize.transaction();
         try {
             const createdFeedback = await AppFeedback.create({

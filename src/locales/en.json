@@ -566,5 +566,6 @@
 	"GET_SETTINGS_FAILED": "Failed to get settings",
 	"GET_SETTINGS_SUCCESSFUL": "Settings retrieved successfully",
 	"SUBMIT_FEEDBACK_FAILED": "Failed to submit feedback",
-	"SUBMIT_FEEDBACK_SUCCESSFUL": "Feedback submitted successfully"
+	"SUBMIT_FEEDBACK_SUCCESSFUL": "Feedback submitted successfully",
+	"DELETE_REPORT_SUCCESSFUL": "DELETE_REPORT_SUCCESSFUL"
 }

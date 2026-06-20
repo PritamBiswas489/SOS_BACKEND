@@ -2,6 +2,8 @@ import "../config/environment.js";
 import db from "../databases/models/index.js";
 import * as Sentry from "@sentry/node";
 import logger from "../config/winston.js";
+import fs from "fs/promises";
+import path from "path";
 
 const { Abusers, AbuserReports, AbuserReportEvidenceFiles, sequelize } = db;
 
@@ -143,6 +145,12 @@ export default class AbuserReportService {
           user_id: userId,
         },
       });
+      //process abuser profile image url with base url
+      abuser.forEach((abuser) => {
+        if (abuser?.photo) {
+          abuser.photo = `${process.env.BASE_URL}${abuser.photo}`;
+        }
+      });
       return callback(null, { data: abuser });
   }catch (error) {
       logger.error("ERROR In getExistingAbuser", { error });
@@ -151,5 +159,68 @@ export default class AbuserReportService {
     }
 
       
+  }
+
+  static async deleteReport({ userId, payload }, callback) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const reportId = parseInt(payload.reportId, 10);
+
+      if (!reportId) {
+        await transaction.rollback();
+        return callback(new Error("REPORT_ID_IS_REQUIRED"), null);
+      }
+
+      const report = await AbuserReports.findOne({
+        where: {
+          id: reportId,
+          user_id: userId,
+        },
+        include: [
+          {
+            model: AbuserReportEvidenceFiles,
+            as: "evidence_files",
+          },
+        ],
+        transaction,
+      });
+
+      if (!report) {
+        await transaction.rollback();
+        return callback(new Error("REPORT_NOT_FOUND"), null);
+      }
+
+      const evidenceFiles = report.evidence_files || [];
+      for (const file of evidenceFiles) {
+        if (!file?.file_url) continue;
+
+        const relativeFilePath = file.file_url.replace(/^\//, "");
+        const absoluteFilePath = path.resolve(process.cwd(), relativeFilePath);
+
+        try {
+          await fs.unlink(absoluteFilePath);
+        } catch (error) {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      }
+
+      await AbuserReportEvidenceFiles.destroy({
+        where: { report_id: report.id },
+        transaction,
+      });
+
+      await report.destroy({ transaction });
+
+      await transaction.commit();
+      return callback(null, { data: { reportId: report.id } });
+    } catch (error) {
+      await transaction.rollback();
+      logger.error("ERROR In deleteReport", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("DELETE_REPORT_FAILED"), null);
+    }
   }
 }

@@ -126,4 +126,34 @@ export default class AbuserReportController {
     );
 
   }
+
+  static async deleteReport(request) {
+    const { payload, headers: { i18n } = {}, user } = request;
+    const userId = user?.id;
+
+    return new Promise((resolve) => {
+      AbuserReportService.deleteReport(
+        { userId, payload },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: i18n?.__(err.message || "DELETE_REPORT_FAILED") || err.message,
+                reason: err.message,
+              },
+            });
+          }
+
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: i18n?.__("DELETE_REPORT_SUCCESSFUL") || "DELETE_REPORT_SUCCESSFUL",
+            error: null,
+          });
+        }
+      );
+    });
+  }
 }

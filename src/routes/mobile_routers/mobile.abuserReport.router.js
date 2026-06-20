@@ -280,5 +280,46 @@ router.get('/get-existing-abuser', async (req, res) => {
 }
 );
 
+/**
+ * @swagger
+ * /api-mobile/auth/abuser-report/delete-report:
+ *   post:
+ *     summary: Delete an abuser report
+ *     tags:
+ *       - Abuser report routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reportId
+ *             properties:
+ *               reportId:
+ *                 type: integer
+ *                 description: ID of the report to delete
+ *                 example: 12
+ *     responses:
+ *       200:
+ *         description: Abuser report deleted successfully
+ *       400:
+ *         description: Bad request or validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/delete-report', async (req, res) => {
+  const response = await AbuserReportController.deleteReport({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+}
+);
+
 export default router;
  
