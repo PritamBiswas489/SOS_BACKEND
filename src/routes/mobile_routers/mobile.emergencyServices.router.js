@@ -125,4 +125,47 @@ router.get('/get-nearby-emergency-services', async (req, res) => {
   res.return(response);
 });
 
+/**
+ * @swagger
+ * /api-mobile/auth/emergency-services/get-my-requested-emergency-services:
+ *   get:
+ *     summary: Get emergency services requested by the logged-in user
+ *     tags:
+ *       - Emergency services routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number for paginated results
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of records per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: User requested emergency services fetched successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+
+router.get('/get-my-requested-emergency-services', async (req, res) => {
+  const response = await EmergencyServicesController.getMyRequestedEmergencyServices({
+    payload: { ...req.query },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
+
 export default router;

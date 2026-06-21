@@ -159,5 +159,24 @@ export default class EmergencyServicesService {
         message: "NEARBY_EMERGENCY_SERVICES_FETCHED_SUCCESSFULLY",
     });
 }
+static async getMyRequestedEmergencyServices({ userid }, callback) {
+  try{
+    const services = await EmergencyServices.findAll({
+      where: {
+        requestBy: userid,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+    return callback(null, {
+      data: services,
+      message: "MY_REQUESTED_EMERGENCY_SERVICES_FETCHED_SUCCESSFULLY",
+    });
+  }catch(error){
+    logger.error("ERROR In getMyRequestedEmergencyServices", { error });
+    process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+    return callback(new Error("GET_MY_REQUESTED_EMERGENCY_SERVICES_FAILED"), null);
+  }
+
+}
 
 }

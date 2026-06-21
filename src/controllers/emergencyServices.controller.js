@@ -62,6 +62,35 @@ export default class EmergencyServicesController {
 
 
     }
+    static async getMyRequestedEmergencyServices(request) {
+        const { payload, headers, user } = request;
+        const userid = user?.id;
+        return new Promise((resolve) => {
+            EmergencyServicesService.getMyRequestedEmergencyServices(
+                { payload, userid },
+                (err, response) => {
+                    if (err) {
+                        return resolve({
+                            status: 400,
+                            data: null,
+                            error: {
+                                message: headers?.i18n.__(
+                                    err.message || "GET_MY_REQUESTED_EMERGENCY_SERVICES_FAILED",
+                                ),
+                                reason: err.message,
+                            },
+                        });
+                    }
+                    return resolve({
+                        status: 200,
+                        data: response.data,
+                        message: headers?.i18n.__("GET_MY_REQUESTED_EMERGENCY_SERVICES_SUCCESSFUL"),
+                        error: null,
+                    });
+                }
+            );
+        });
+    }
 
     
 
