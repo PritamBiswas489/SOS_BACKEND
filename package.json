@@ -4,8 +4,8 @@
   "description": "travel wallet",
   "main": "./bin/www.js",
   "scripts": {
-    "dev": "nodemon ./bin/www.js",
-    "start": "node ./bin/www.js",
+    "dev": "nodemon --import ./instrument.js ./bin/www.js",
+    "start": "node --import ./instrument.js ./bin/www.js",
     "format": "prettier --write ."
   },
   "keywords": [

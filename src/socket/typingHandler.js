@@ -10,6 +10,8 @@
  *
  * Debounce is handled on the client side (recommended: 1-2s).
  */
+import "../config/environment.js";
+import * as Sentry from "@sentry/node";
 export const registerTypingHandlers = (io, socket) => {
   socket.on('typing:start', (payload) => {
     try {
@@ -23,6 +25,7 @@ export const registerTypingHandlers = (io, socket) => {
     };
     io.to(`${roomId}`).emit('typing:start', { ...typingData, chatWith: socket.userId });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error('[Socket] typing:start error', err);
     }
   });
@@ -37,6 +40,7 @@ export const registerTypingHandlers = (io, socket) => {
     };
     io.to(`${roomId}`).emit('typing:stop', { ...typingData, chatWith: socket.userId });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error('[Socket] typing:stop error', err);
     }
   });

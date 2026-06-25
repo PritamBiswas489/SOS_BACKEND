@@ -9,6 +9,7 @@ import { createSocket as createUdpSocket } from "dgram";
 import { getProfileImage } from "../libraries/utility.js";
 import SosSessionsService from "../services/sosSessions.service.js";
 import twilio from "twilio";
+import * as Sentry from "@sentry/node";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,6 +142,7 @@ function waitForUdpReady(port, ffmpegProcess, timeoutMs = 8000) {
     }
 
     function fail(msg) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(new Error(msg));
       if (settled) return;
       settled = true;
       if (ffmpegProcess) ffmpegProcess.stderr.off('data', onStderr);
@@ -305,6 +307,7 @@ async function startRecording(room, roomId) {
     // ── Isolated recording cleanup ────────────────────────────────────────────
     // Any error here is fully contained. The producer, send transport, and all
     // listener consumers are completely unaffected — streaming continues normally.
+    process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, sosId: room.sosId }});
     console.error(`❌ [recording:${roomId}] Recording failed — streaming continues:`, err.message);
 
     // Kill ffmpeg if it was spawned
@@ -431,16 +434,26 @@ async function createWorkerPool() {
     });
 
     w.on("died", () => {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(new Error(`mediasoup worker[${i}] died`));
       console.error(`❌ mediasoup worker[${i}] died — restarting`);
       workers[i] = null;
       // Respawn replacement worker with the same port slice
       mediasoup.createWorker({ logLevel: "warn", rtcMinPort: workerMinPort, rtcMaxPort: workerMaxPort })
         .then((replacement) => {
-          replacement.on("died", () => process.exit(1));
+          replacement.on("died", () => {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(
+              new Error(`mediasoup replacement worker[${i}] died`),
+              { tags: { workerIndex: i } }
+            );
+            process.exit(1)
+        });
           workers[i] = replacement;
           console.log(`✅ mediasoup worker[${i}] restarted, pid:`, replacement.pid);
         })
-        .catch(() => process.exit(1));
+        .catch((error) => {
+          process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error, { extra: { workerIndex: i, workerMinPort, workerMaxPort }});
+          process.exit(1)
+        });
     });
 
     workers.push(w);
@@ -565,6 +578,12 @@ export const registerMediaSoupHandler = async (io, socket) => {
   // Worker should already be ready (started at module load).
   // This await is a safety net in case the server starts and a client
   // connects before the worker promise resolves.
+  process.env.SENTRY_ENABLED === "true" && Sentry.addBreadcrumb({
+    category: "mediasoup",
+    message: "registerMediaSoupHandler called — ensuring worker pool is ready",
+    level: "info",
+  });
+  process.env.SENTRY_ENABLED === "true" && Sentry.setUser({ id: socket.userId, username: socket.userName });
   await ensureWorker();
 
   // ── Disconnect cleanup ──────────────────────────────────────────────────
@@ -628,6 +647,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
           });
       }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, role, sosId }});
       console.error("❌ ms:join-room error", err);
       callback({ error: err.message });
     }
@@ -672,6 +692,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
         iceServers: getIceServers(),
       });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, direction }});
       console.error("❌ ms:create-transport error", err);
       callback({ error: err.message });
     }
@@ -696,6 +717,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
         await transport.connect({ dtlsParameters });
         callback({});
       } catch (err) {
+        process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, transportId }});
         console.error("❌ ms:connect-transport error", err);
         callback({ error: err.message });
       }
@@ -741,6 +763,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
 
       callback({ id: producer.id });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, kind }});
       console.error("❌ ms:produce error", err);
       callback({ error: err.message });
     }
@@ -788,6 +811,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
         rtpParameters: consumer.rtpParameters,
       });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId, rtpCapabilities }});
       console.error("❌ ms:consume error", err);
       callback({ error: err.message });
     }
@@ -802,6 +826,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       }
       callback({ rooms: result });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomIds }});
       console.error("❌ ms:check-room-has-creator error", err);
       callback({ error: err.message });
     }
@@ -815,6 +840,7 @@ export const registerMediaSoupHandler = async (io, socket) => {
       await consumer.resume();
       callback({});
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { roomId }});
       console.error("❌ ms:resume-consumer error", err);
       callback({ error: err.message });
     }

@@ -1,6 +1,8 @@
 import { MAX_PROFILE_IMAGE_SIZE_MB } from "../middlewares/profileImageUpload.js";
 import { CHAT_MEDIA_FILE_SIZES } from "../middlewares/chatMediaupload.js";
 import { EVIDENCE_FILE_SIZES } from "../middlewares/evidenceUpload.js";
+import logger from "../config/winston.js";
+import * as Sentry from "@sentry/node";
 export default class SettingsService {
     static async getSettings({ userId }, callback) {
         try {

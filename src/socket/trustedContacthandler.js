@@ -1,8 +1,9 @@
-import moment from "moment";
 import { promisify } from "../libraries/utility.js";
 import TrustedContactService from "../services/trustedContact.service.js";
 import { sendTrustedContactInvitationValidator } from "../validators/trustedContact.validator.js";
 import i18n from "../config/i18.config.js";
+import "../config/environment.js";
+import * as Sentry from "@sentry/node";
 
 export const registerTrustedContactHandler = (io, socket) => {
   socket.on("send:trustedContactRequest", async (requestData, ack) => {
@@ -14,6 +15,7 @@ export const registerTrustedContactHandler = (io, socket) => {
     try {
       payload = JSON.parse(requestData);
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { requestData }});
       if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
       return;
     }
@@ -72,6 +74,7 @@ export const registerTrustedContactHandler = (io, socket) => {
         });
       }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       if (typeof ack === "function") {
         return ack({
           success: false,
@@ -88,6 +91,7 @@ export const registerTrustedContactHandler = (io, socket) => {
     try {
       acceptData = JSON.parse(payload);
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
       return;
     }
@@ -98,6 +102,7 @@ export const registerTrustedContactHandler = (io, socket) => {
       ),
       { userid: userId, payload: acceptData, headers: {} },
     ).catch((err) => {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       if (typeof ack === "function") {
         return ack({
           success: false,
@@ -124,6 +129,7 @@ export const registerTrustedContactHandler = (io, socket) => {
       }
     }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error("[Socket] accept:trustedContactRequest error", err);
       if (typeof ack === "function") return ack({ success: false, message: i18n.__("ACCEPT_INVITATION_FAILED") });
     }
@@ -135,6 +141,7 @@ export const registerTrustedContactHandler = (io, socket) => {
     try {
       rejectData = JSON.parse(payload);
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       if (typeof ack === "function") return ack({ success: false, message: "Invalid JSON payload" });
       return;
     }
@@ -144,6 +151,7 @@ export const registerTrustedContactHandler = (io, socket) => {
       ),
       { userid: userId, payload: rejectData, headers: {} },
     ).catch((err) => {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       if (typeof ack === "function") {
         return ack({
           success: false,
@@ -170,6 +178,7 @@ export const registerTrustedContactHandler = (io, socket) => {
       }
     }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error("[Socket] delete:trustedContactRequest error", err);
       if (typeof ack === "function") return ack({ success: false, message: i18n.__("REJECT_INVITATION_FAILED") });
     }

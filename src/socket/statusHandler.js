@@ -1,4 +1,6 @@
 import ChatService from "../services/chat.service.js";
+import "../config/environment.js";
+import * as Sentry from "@sentry/node";
 export const registerStatusHandlers = (io, socket) => {
   // Handler for message delivery status updates
   socket.on("message:delivered", async (payload) => {
@@ -32,6 +34,7 @@ export const registerStatusHandlers = (io, socket) => {
       timestamp: new Date().toISOString(),
     });
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error("[Status] message:delivered error", err);
     }
   });
@@ -69,6 +72,7 @@ export const registerStatusHandlers = (io, socket) => {
       });
     }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error("[Status] message:read error", err);
     }
   });

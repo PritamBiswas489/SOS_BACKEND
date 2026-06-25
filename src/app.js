@@ -18,7 +18,7 @@ import multer from "multer";
 import customReturn from "./middlewares/responseBuilder.js";
 import locales from "./middlewares/locales.js";
 import { PROFILE_IMAGE_SIZE_ERROR_MESSAGE } from "./middlewares/profileImageUpload.js";
-import { initializeSentry } from "./config/sentry.config.js";
+// import { initializeSentry } from "./config/sentry.config.js";
 // import "./cron/index.js"
 import cookieParser from "cookie-parser";
 import logger from "./config/winston.js";
@@ -78,11 +78,11 @@ app.use((req, res, next) => {
   next();
 });
 
-if (SENTRY_ENABLED === "true") {
-  (async () => {
-    await initializeSentry(SENTRY_DSN);
-  })();
-}
+// if (SENTRY_ENABLED === "true") {
+//   (async () => {
+//     await initializeSentry(SENTRY_DSN);
+//   })();
+// }
 app.use(
   cors({
     origin: [

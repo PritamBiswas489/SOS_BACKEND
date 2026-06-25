@@ -1,4 +1,6 @@
 import { getConnectedUsers } from "./index.js";
+import "../config/environment.js";
+import * as Sentry from "@sentry/node";
 /**
  * Presence / Online-status handler.
  *
@@ -30,6 +32,7 @@ export const registerPresenceHandlers = (io, socket) => {
       ack?.(statuses);
     }
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err, { extra: { payload }});
       console.error('[Socket] presence:subscribe error', err);
       if (typeof ack === "function") ack([]);
     }

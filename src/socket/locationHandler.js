@@ -1,8 +1,9 @@
-import moment from "moment";
 import { promisify } from "../libraries/utility.js";
 import UserLocationService from "../services/userLocation.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
 import db from "../databases/models/index.js";
+import "../config/environment.js"
+import * as Sentry from "@sentry/node";
 
 const { TrustedContacts } = db;
 
@@ -59,6 +60,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:update:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to process location update" });
@@ -82,6 +84,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true, contacts });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling contacts:get-locations:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to get contacts' locations" });
@@ -108,6 +111,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true, notifiedContacts: contactIds.length });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:share:start:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to start location sharing" });
@@ -133,6 +137,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true, notifiedContacts: contactIds.length });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:share:stop:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to stop location sharing" });
@@ -183,6 +188,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:request:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to send location request" });
@@ -234,6 +240,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:request:accept:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to accept location request" });
@@ -264,6 +271,7 @@ export const registerLocationHandlers = (io, socket) => {
                 ack({ success: true });
             }
         } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
             console.error("Error handling location:request:decline:", err);
             if (typeof ack === "function") {
                 ack({ success: false, message: "Failed to decline location request" });

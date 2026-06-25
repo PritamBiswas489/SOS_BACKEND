@@ -18,6 +18,7 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import ChatService from "../services/chat.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
+import * as Sentry from "@sentry/node";
 let io;
 const connectedUsers = new Map();
 
@@ -52,15 +53,15 @@ export const initSocketServer = async (httpServer) => {
     socket: {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
-       reconnectStrategy: (retries) => {
-      if (retries > 10) {
-        console.error("❌ Redis pub: max retries reached — giving up");
-        return new Error("Redis max retries");
-      }
-      return Math.min(retries * 200, 3000); // wait up to 3s between retries
+      reconnectStrategy: (retries) => {
+        if (retries > 10) {
+          console.error("❌ Redis pub: max retries reached — giving up");
+          return new Error("Redis max retries");
+        }
+        return Math.min(retries * 200, 3000); // wait up to 3s between retries
+      },
     },
-    },
-    
+
     username: process.env.REDIS_USERNAME || undefined,
     password: process.env.REDIS_PASSWORD || undefined,
     database: process.env.REDIS_DATABASE
@@ -71,15 +72,17 @@ export const initSocketServer = async (httpServer) => {
 
   pubClient.on("connect", () => console.log("✅ Redis pubClient connected"));
   pubClient.on("ready", () => console.log("✅ Redis pubClient ready"));
-  pubClient.on("error", (err) =>
-    console.error("❌ Redis pubClient error:", err),
-  );
+  pubClient.on("error", (err) => {
+    console.error("❌ Redis pubClient error:", err);
+    process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err); // 👈
+  });
 
   subClient.on("connect", () => console.log("✅ Redis subClient connected"));
   subClient.on("ready", () => console.log("✅ Redis subClient ready"));
-  subClient.on("error", (err) =>
-    console.error("❌ Redis subClient error:", err),
-  );
+  subClient.on("error", (err) => {
+    console.error("❌ Redis subClient error:", err);
+    process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err); // 👈
+  });
   pubClient.on("disconnect", () => console.warn("⚠️ Redis pubClient disconnected"));
   subClient.on("disconnect", () => console.warn("⚠️ Redis subClient disconnected"));
 
@@ -91,8 +94,8 @@ export const initSocketServer = async (httpServer) => {
   io.use(async (socket, next) => {
     try {
       console.log(socket.handshake.headers);
-      const token =  socket?.handshake?.auth?.token  || socket.handshake.headers["token"];
-      const refreshToken = socket?.handshake?.auth?.refreshToken  || socket?.handshake?.headers["refreshtoken"];
+      const token = socket?.handshake?.auth?.token || socket.handshake.headers["token"];
+      const refreshToken = socket?.handshake?.auth?.refreshToken || socket?.handshake?.headers["refreshtoken"];
       console.log(
         `Socket ${socket.id} attempting to authenticate with token: ${token} refreshToken: ${refreshToken}`,
       );
@@ -122,10 +125,10 @@ export const initSocketServer = async (httpServer) => {
         // Generate new tokens
         const payload = {
           id: decoded.id,
-					phoneNumber: decoded.phone_number,
-					name: decoded.name,
-					email: decoded.email,
-					role: decoded.role,
+          phoneNumber: decoded.phone_number,
+          name: decoded.name,
+          email: decoded.email,
+          role: decoded.role,
           profile_photo: decoded.profile_photo,
         };
 
@@ -163,6 +166,7 @@ export const initSocketServer = async (httpServer) => {
       next();
     } catch (err) {
       console.error("❌ Socket authentication error:", err);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
       next(new Error("Authentication failed"));
     }
   });
@@ -177,7 +181,7 @@ export const initSocketServer = async (httpServer) => {
       socket.emit("token:refreshed", {
         accessToken: socket.newAccessToken,
         refreshToken: socket.newRefreshToken,
-      }); 
+      });
     }
 
     // Track connected sockets per user (multi-device support)
@@ -186,33 +190,33 @@ export const initSocketServer = async (httpServer) => {
     }
     connectedUsers.get(userId).add(socket.id);
 
-    
-    
-   //Joining personal room for direct messages and status updates
+
+
+    //Joining personal room for direct messages and status updates
     socket.on('join:personal', async () => {
       const personalRoom = `app-user:${userId}`;
       await socket.join(personalRoom);
       socket.emit('personal:room:joined', { room: personalRoom });
-   });
+    });
 
-    
-     
+
+
 
     socket.on("join:room", async (payload) => {
       const { roomId } = JSON.parse(payload);
-      console.log(payload); 
-      
+      console.log(payload);
+
       // Check if socket is already in the room
       if (socket.rooms.has(roomId)) {
-      console.log(
-        `User ${socket.userName} (${socket.userId}) already joined room ${roomId}`,
-      );
-      return;
+        console.log(
+          `User ${socket.userName} (${socket.userId}) already joined room ${roomId}`,
+        );
+        return;
       }
-      
+
       await socket.join(roomId);
       console.log(
-      `User ${socket.userName} with ID ${socket.userId} joined room ${roomId}`,
+        `User ${socket.userName} with ID ${socket.userId} joined room ${roomId}`,
       );
       const clients = await io.in(roomId).allSockets();
       console.log(`Sockets in room ${roomId}:`, clients);
@@ -222,6 +226,7 @@ export const initSocketServer = async (httpServer) => {
     try {
       await ChatService.updateUserOnlineStatus(socket.userId, true);
     } catch (err) {
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
       console.error(`❌ Failed to update online status for user ${userId}:`, err);
     }
 
@@ -239,21 +244,24 @@ export const initSocketServer = async (httpServer) => {
     registerLocationHandlers(io, socket);
     //Register media SOAP-related event handlers
     registerMediaSoupHandler(io, socket);
-   //Register health-related event handlers
+    //Register health-related event handlers
     registerHealthHandler(io, socket);
 
     // Notify contacts that user is online
-    const contactsids = await TrustedContactService.getLocationShareContactIds(socket.userId);
-    if(contactsids.length > 0){
-      //unique contact IDs to avoid duplicate notifications
-      const uniqueContactIds = [...new Set(contactsids)];
-       for (const contactId of uniqueContactIds) {
-        const contactRoom = `app-user:${contactId}`;
-        console.log(`Emitting user:online for ${socket.userName} (${socket.userId}) to contact ${contactId} in room ${contactRoom}`);
-        io.to(contactRoom).emit("user:online", { userId, userName, profilePhoto, phoneNumber });
+    try {
+      const contactsids = await TrustedContactService.getLocationShareContactIds(socket.userId);
+      if (contactsids.length > 0) {
+        const uniqueContactIds = [...new Set(contactsids)];
+        for (const contactId of uniqueContactIds) {
+          const contactRoom = `app-user:${contactId}`;
+          io.to(contactRoom).emit("user:online", { userId, userName, profilePhoto, phoneNumber });
+        }
       }
+    } catch (err) {
+      console.error(`❌ Failed to notify contacts for user ${userId}:`, err);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
     }
-    
+
     socket.on('disconnect', async (reason) => {
       console.log(`[Socket] User disconnected: ${userName} (${userId}) — ${reason}`);
       const sockets = connectedUsers.get(userId);
@@ -262,18 +270,19 @@ export const initSocketServer = async (httpServer) => {
         if (sockets.size === 0) {
           console.log(`User ${userName} (${userId}) has no more active sockets. Marking as offline.`);
           connectedUsers.delete(userId);
-            try {
-              await Promise.race([
-                ChatService.updateUserOnlineStatus(socket.userId, false),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
-              ]);
-            } catch (err) {
-              console.error(`❌ Failed to mark user ${userId} offline:`, err.message);
-            }
+          try {
+            await Promise.race([
+              ChatService.updateUserOnlineStatus(socket.userId, false),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+            ]);
+          } catch (err) {
+            process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
+            console.error(`❌ Failed to mark user ${userId} offline:`, err.message);
+          }
 
           // Only broadcast offline when ALL devices disconnect
           io.emit('user:offline', { userId, lastSeen: new Date().toISOString() });
-        }else{
+        } else {
           console.log(`User ${userName} (${userId}) still has active sockets:`, sockets);
         }
       }

@@ -1,9 +1,11 @@
 import moment from "moment";
+import "../config/environment.js"
 import ChatService from "../services/chat.service.js";
 import { promisify } from "../libraries/utility.js";
 import UserService from "../services/user.service.js";
 import TrustedContactService from "../services/trustedContact.service.js";
 import { enqueueBulk } from "../queues/notificationQueue.js";
+import * as Sentry from "@sentry/node";
 export const registerChatHandlers = (io, socket) => {
   socket.on("message:send", async (load, ack) => {
     try {
@@ -129,6 +131,7 @@ export const registerChatHandlers = (io, socket) => {
       }
     } catch (err) {
       console.error("[Chat] message:send error", err);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
       if (typeof ack === "function") {
         ack?.({ success: false, error: "Failed to send message" });
       }
@@ -142,6 +145,8 @@ export const registerChatHandlers = (io, socket) => {
         ack({ success: true, messages });
       }
     } catch (err) {
+      console.error("[Chat] message:history error", err);
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(err);
       if (typeof ack === "function") {
         ack({ success: false, error: "Failed to fetch chat history" });
       }
