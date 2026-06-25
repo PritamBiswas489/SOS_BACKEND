@@ -9,6 +9,7 @@ import UserService from "./user.service.js";
 import path from "path";
 import { promisify } from "../libraries/utility.js";
 import logger from "../config/winston.js";
+import { NGO_Registration_Received, newUserbyNgo } from "./email.service.js";
  
 
 export default class NgoService {
@@ -40,6 +41,7 @@ export default class NgoService {
         ngo_certificate: certificateFile,
         role: "NGO",
       });
+      NGO_Registration_Received(newNgo.id);
       return callback(null, {
         data: { id: newNgo.id, name: newNgo.name, email: newNgo.email },
       });
@@ -229,6 +231,7 @@ export default class NgoService {
             );
         },
       );
+      newUserbyNgo(createUser.id); // Send email notification to the new user
 
       return callback(null, {
         data: { user: createUser, kycDocument: kycResult?.data, license },

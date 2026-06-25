@@ -1,5 +1,5 @@
 #create new table
-node create-migration.js new_table_app_feedback
+node create-migration.js new_table_airwallex_user_debit_card
 # Run all migrations
 node migrate.js up
 

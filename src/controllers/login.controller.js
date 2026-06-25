@@ -292,7 +292,7 @@ export default class LoginController {
         process.env.REFRESH_TOKEN_SECRET_KEY,
         Number(process.env.REFRESH_TOKEN_EXPIRES_IN),
       );
-      if(existingUser){
+      if(existingUser && payload?.platform === "mobile"){
         UserService.checlMultipleDeviceLogin(jwtPayload?.id, deviceid, i18n);
       }
 

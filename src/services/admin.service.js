@@ -6,6 +6,7 @@ import { randomSaltHex } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
 const path = await import("path");
 import logger from "../config/winston.js";
+import { NGO_Approved, NGO_Rejected, sendLicenseKeyAfterAdminApproval } from "./email.service.js";
 
 export default class AdminService {
   // Admin registration service method
@@ -174,6 +175,7 @@ export default class AdminService {
       }
       ngo.is_verified = true;
       await ngo.save();
+      NGO_Approved(ngo.id);
       return callback(null, {
         data: {
           id: ngo.id,
@@ -199,6 +201,7 @@ export default class AdminService {
       }
       ngo.is_verified = false;
       await ngo.save();
+      NGO_Rejected(ngo.id);
       return callback(null, {
         data: {
           id: ngo.id,

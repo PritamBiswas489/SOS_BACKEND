@@ -111,7 +111,7 @@ router.post("/verify-otp", async (req, res) => {
  *         description: User created successfully after OTP verification
  */
 router.post("/create-user-after-otp-verification", async (req, res) => {
-   const response = await LoginController.createUserAfterOtpVerification({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   const response = await LoginController.createUserAfterOtpVerification({ payload: { ...req.params, ...req.query, ...req.body, platform: "mobile" }, headers: req.headers });
    res.return(response);
 });
 

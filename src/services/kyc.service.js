@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/node";
 import Joi from "joi";
 import path from "path";
 import logger from "../config/winston.js";
+import { emailAfterSubmitKyc } from "./email.service.js";
 const {UserKycDocuments, User} = db;
  
 const kycDocumentSchema = Joi.object({
@@ -95,6 +96,7 @@ export default class KycService {
         try {
             const newKycDocument = await UserKycDocuments.create(insertData, { transaction });
             //await this.changeStatus({ userId, payload: { status: "approved" }, headers }, () => {});
+            emailAfterSubmitKyc(userId); // Call the email service to send the KYC submission email
             return callback(null, { data: newKycDocument });
         } catch (error) {
             console.error("Error inserting KYC document:", error);

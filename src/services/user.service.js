@@ -42,6 +42,9 @@ export default class UserService {
             attributes: ["id", "license_key", "status", "expiry_date"],
           },
           {
+            model: User, as: "ngo", attributes: ["id", "name", "email", "phone_number"],
+          },
+          {
             model: Devices,
             as: "devices",
             attributes: [
@@ -312,4 +315,5 @@ export default class UserService {
           return callback(new Error("GET_USER_ANALYTICS_FAILED"), null);
        }
   }
+   
 }

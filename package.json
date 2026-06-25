@@ -53,6 +53,7 @@
     "moment-timezone": "^0.6.0",
     "multer": "^2.0.1",
     "node-cron": "^4.1.1",
+    "nodemailer": "^9.0.1",
     "pg": "^8.16.0",
     "pg-hstore": "^2.3.4",
     "playwright": "^1.53.2",
