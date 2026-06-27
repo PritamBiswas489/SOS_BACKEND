@@ -194,6 +194,60 @@ export default class LoginController {
 
 
   }
+  static async checkMobileNumberHasLicense(request) {
+    const {
+      payload,
+      headers: { i18n },
+    } = request;
+
+    try{
+      const phoneNumber = payload?.phoneNumber;
+      const user = await User.findOne({
+        where: { phone_number: phoneNumber },
+        include: [
+          {
+            model: Licenses,
+            as: "licenses", 
+            attributes: ["id", "license_key", "status"],
+          },
+        ],
+      });
+
+      if (!user) {
+        return {
+          status: 200,
+          data: { licenseKey: null, licenseStatus: null },
+          error: {  },
+        };
+      }
+        
+      
+
+      if (!user.licenses || !user.licenses.id) {
+        return {
+          status: 200,
+          data: { licenseKey: null, licenseStatus: null },
+          error: {  },
+        };
+      }
+
+      return {
+        status: 200,
+        data: { licenseKey: user.licenses.license_key, licenseStatus: user.licenses.status },
+        message: i18n.__("LICENSE_FOUND_FOR_USER"),
+        error: {},
+      };
+
+    }catch(e){
+      logger.error("ERROR In checkMobileNumberHasLicense", { error: e });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(e);
+      return {
+        status: 500,
+        data: [],
+        error: { message: i18n.__("LICENSE_CHECK_FAILED"), reason: e.message },
+      };
+    }
+  }
 
   //* Verify OTP for login
   static async verifyOtp(request) {

@@ -24,7 +24,7 @@ export async function sendEmail({ to, subject, html }) {
   }
   console.log(`Sending email to: ${to}, from: ${from}, subject: ${subject}`);
   const info = await transporter.sendMail({
-    from: `KobyTech ${process.env.SMTP_FROM}`, // sender address
+    from: `KobyTech ${from}`, // sender address
     to,
     subject,
     html,

@@ -8,6 +8,36 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api-mobile/front/login/check-mobile-number-has-license:
+ *   get:
+ *     summary: Check whether mobile number has a license
+ *     tags:
+ *       - User authentication routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *       - csrfToken: []
+ *     parameters:
+ *       - in: query
+ *         name: phoneNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *           default: "+919830990065"
+ *         description: Mobile number to check license mapping
+ *     responses:
+ *       200:
+ *         description: Mobile number license check completed successfully
+ */
+router.get("/check-mobile-number-has-license", async (req, res) => {
+  const response = await LoginController.checkMobileNumberHasLicense({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+  res.return(response);
+});
+
+
+
+/**
+ * @swagger
  * /api-mobile/front/login/send-otp:
  *   post:
  *     summary: Send OTP for login
