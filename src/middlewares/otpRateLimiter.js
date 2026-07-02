@@ -54,3 +54,11 @@ export const reportAbuserApiRateLimiter = createOtpRateLimiter({
   errorKey: "DAILY_API_LIMIT_EXCEEDED",
 });
 
+export const contactAdminApiRateLimiter = createOtpRateLimiter({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  keyPrefix: "contact_admin_api",
+  retryAfter: 24 * 60 * 60,
+  errorKey: "DAILY_API_LIMIT_EXCEEDED",
+});
+

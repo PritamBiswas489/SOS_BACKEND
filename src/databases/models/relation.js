@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles, AppFeedback, AppFeedbackAttachments } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -198,9 +198,52 @@ const relation = (db) => {
     onDelete: "CASCADE",
     onUpdate: "CASCADE",
   });
+  User.hasMany(AppFeedback, {
+    foreignKey: "user_id",
+    as: "app_feedbacks",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  AppFeedback.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
   AppFeedbackAttachments.belongsTo(AppFeedback, {
     foreignKey: "feedback_id",
     as: "feedback",
+  });
+
+  User.hasMany(RequestIosEmail, {
+    foreignKey: "userId",
+    as: "request_ios_emails",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  RequestIosEmail.belongsTo(User, {
+    foreignKey: "userId",
+    as: "user",
+  });
+
+  User.hasMany(ContactAdmin, {
+    foreignKey: "userId",
+    as: "contact_admins",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  ContactAdmin.belongsTo(User, {
+    foreignKey: "userId",
+    as: "user",
+  });
+
+  User.hasMany(EmergencyServices, {
+    foreignKey: "requestBy",
+    as: "emergency_services",
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  });
+  EmergencyServices.belongsTo(User, {
+    foreignKey: "requestBy",
+    as: "user",
   });
 
 };

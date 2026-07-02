@@ -268,4 +268,75 @@ router.get("/user-list-for-ngo", jwtVerifyWebNgo, async (req, res) => {
     });
     res.return(response);
 });
+
+
+/**
+ * @swagger
+ * /api/auth-web/ngo/ngo-sos-list:
+ *   get:
+ *     summary: Get SOS sessions for users registered under the logged-in NGO
+ *     tags:
+ *       - NGO authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page (default 10)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, expired, cancelled, resolved]
+ *         description: Filter SOS sessions by status
+ *       - in: query
+ *         name: mobileNumber
+ *         schema:
+ *           type: string
+ *         description: Filter SOS sessions by user mobile number
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-07-01"
+ *         description: Filter SOS sessions created on or after this date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-07-31"
+ *         description: Filter SOS sessions created on or before this date
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: SOS sessions retrieved successfully
+ *       400:
+ *         description: Failed to retrieve SOS sessions
+ */
+
+
+router.get("/ngo-sos-list", jwtVerifyWebNgo, async (req, res) => {
+  const response = await NgoController.listSosForNgo({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
+
+
+
+
+ 
 export default router;

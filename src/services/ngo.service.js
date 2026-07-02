@@ -1,13 +1,13 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
-const { User, Licenses, UserKycDocuments } = db;
+const { Op, User, Licenses, UserKycDocuments, SosSessions, SosSessionAudioRecords } = db;
 import { hashStr , compareHashedStr, generateToken} from "../libraries/auth.js";
 import { randomSaltHex } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
 import KycService from "./kyc.service.js";
 import UserService from "./user.service.js";
 import path from "path";
-import { promisify } from "../libraries/utility.js";
+import { promisify, getProfileImage, audioFileLink } from "../libraries/utility.js";
 import logger from "../config/winston.js";
 import { NGO_Registration_Received, newUserbyNgo } from "./email.service.js";
  
@@ -304,6 +304,123 @@ export default class NgoService {
       logger.error("ERROR In listUsersForNgo", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("LIST_USERS_FOR_NGO_FAILED"));
+    }
+  }
+
+  static async listSosForNgo({ payload }, callback) {
+    try {
+      const {
+        ngo_id,
+        limit = 10,
+        page = 1,
+        status,
+        mobileNumber,
+        phoneNumber,
+        fromDate,
+        toDate,
+      } = payload;
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const sosWhere = {};
+      const allowedStatuses = ["active", "expired", "cancelled", "resolved"];
+      if (status) {
+        if (!allowedStatuses.includes(status)) {
+          return callback(new Error("INVALID_STATUS_FILTER"));
+        }
+        sosWhere.status = status;
+      }
+
+      const createdAtFilter = {};
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        sosWhere.created_at = createdAtFilter;
+      }
+
+      const userWhere = {
+        ngo_id,
+        role: "USER",
+      };
+      if (mobileNumber || phoneNumber) {
+        userWhere.phone_number = mobileNumber || phoneNumber;
+      }
+
+      const response = await SosSessions.findAndCountAll({
+        distinct: true,
+        where: sosWhere,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "phone_number", "profile_photo", "ngo_id"],
+            where: userWhere,
+            required: true,
+          },
+          {
+            model: SosSessionAudioRecords,
+            as: "audio_records",
+            attributes: ["id", "file_name", "created_at"],
+            required: false,
+          },
+        ],
+        order: [["created_at", "DESC"]],
+        limit: parsedLimit,
+        offset,
+      });
+
+      const rows = response.rows.map((session) => {
+        const plain = session.toJSON();
+        const photo = plain?.user?.profile_photo
+          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
+          : null;
+
+        if (photo) {
+          plain.user.profile_photo = getProfileImage(photo);
+        }
+
+        plain.audio_records = (plain.audio_records || []).map((audioRecord) => ({
+          ...audioRecord,
+          file_url: audioFileLink(audioRecord.file_name),
+        }));
+
+        return plain;
+      });
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listSosForNgo:", error);
+      logger.error("ERROR In listSosForNgo", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_SOS_FOR_NGO_FAILED"));
     }
   }
 }

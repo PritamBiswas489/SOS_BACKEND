@@ -1,12 +1,13 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
-const { User, Licenses, UserKycDocuments } = db;
+const { Op, User, Licenses, UserKycDocuments, SosSessions, SosSessionAudioRecords, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices, AbuserReports, Abusers, AbuserReportEvidenceFiles } = db;
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
-import { randomSaltHex } from "../libraries/utility.js";
+import { randomSaltHex, getProfileImage, audioFileLink } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
 const path = await import("path");
+const fs = await import("fs");
 import logger from "../config/winston.js";
-import { NGO_Approved, NGO_Rejected, sendLicenseKeyAfterAdminApproval } from "./email.service.js";
+import { NGO_Approved, NGO_Rejected, sendLicenseKeyAfterAdminApproval, sendAppFeedbackReplyEmail, sendRequestIosAccessReplyEmail, sendContactAdminReplyEmail } from "./email.service.js";
 
 export default class AdminService {
   // Admin registration service method
@@ -485,6 +486,1068 @@ export default class AdminService {
       logger.error("ERROR In changeKycDocumentStatus", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("CHANGE_KYC_DOCUMENT_STATUS_FAILED"));
+    }
+  }
+
+  static async listSos({ payload }, callback) {
+    try {
+      const {
+        ngo_id,
+        limit = 10,
+        page = 1,
+        status,
+        mobileNumber,
+        phoneNumber,
+        fromDate,
+        toDate,
+      } = payload;
+
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const sosWhere = {};
+      const allowedStatuses = ["active", "expired", "cancelled", "resolved"];
+      if (status) {
+        if (!allowedStatuses.includes(status)) {
+          return callback(new Error("INVALID_STATUS_FILTER"));
+        }
+        sosWhere.status = status;
+      }
+
+      const createdAtFilter = {};
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        sosWhere.created_at = createdAtFilter;
+      }
+
+      const userWhere = { role: "USER" };
+      if (ngo_id) {
+        userWhere.ngo_id = ngo_id;
+      }
+      if (mobileNumber || phoneNumber) {
+        userWhere.phone_number = mobileNumber || phoneNumber;
+      }
+
+      const response = await SosSessions.findAndCountAll({
+        distinct: true,
+        where: sosWhere,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "phone_number", "profile_photo", "ngo_id"],
+            where: userWhere,
+            required: true,
+          },
+          {
+            model: SosSessionAudioRecords,
+            as: "audio_records",
+            attributes: ["id", "file_name", "created_at"],
+            required: false,
+          },
+        ],
+        order: [["created_at", "DESC"]],
+        limit: parsedLimit,
+        offset,
+      });
+
+      const rows = response.rows.map((session) => {
+        const plain = session.toJSON();
+        const photo = plain?.user?.profile_photo
+          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
+          : null;
+
+        if (photo) {
+          plain.user.profile_photo = getProfileImage(photo);
+        }
+
+        plain.audio_records = (plain.audio_records || []).map((audioRecord) => ({
+          ...audioRecord,
+          file_url: audioFileLink(audioRecord.file_name),
+        }));
+
+        return plain;
+      });
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listSos:", error);
+      logger.error("ERROR In listSos", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_SOS_FOR_ADMIN_FAILED"));
+    }
+  }
+
+  static async listAppFeedback({ payload }, callback) {
+    try {
+      const {
+        limit = 10,
+        page = 1,
+        status,
+        user_id,
+        fromDate,
+        toDate,
+      } = payload;
+
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const whereClause = {};
+      const allowedStatuses = ["new", "reviewed", "resolved", "ignored"];
+
+      if (status) {
+        if (!allowedStatuses.includes(status)) {
+          return callback(new Error("INVALID_STATUS_FILTER"));
+        }
+        whereClause.status = status;
+      }
+
+      if (user_id) {
+        whereClause.user_id = Number(user_id);
+      }
+
+      const createdAtFilter = {};
+
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        whereClause.created_at = createdAtFilter;
+      }
+
+      const feedback = await AppFeedback.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "phone_number", "profile_photo"],
+            required: false,
+          },
+          {
+            model: AppFeedbackAttachments,
+            as: "feedback_files",
+            required: false,
+          },
+        ],
+        order: [["created_at", "DESC"]],
+        limit: parsedLimit,
+        offset,
+        distinct: true,
+      });
+
+      const rows = feedback.rows.map((item) => {
+        const plain = item.toJSON();
+
+        const photo = plain?.user?.profile_photo
+          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
+          : null;
+        if (photo && plain?.user) {
+          plain.user.profile_photo = getProfileImage(photo);
+        }
+
+        plain.feedback_files = (plain.feedback_files || []).map((file) => {
+          if (!file?.file_url) {
+            return {
+              ...file,
+              file_url: null,
+            };
+          }
+
+          const normalizedPath = file.file_url.startsWith("/")
+            ? file.file_url
+            : `/${file.file_url}`;
+          const absolutePath = path.join(
+            process.cwd(),
+            normalizedPath.replace(/^\//, ""),
+          );
+
+          if (!fs.existsSync(absolutePath)) {
+            return {
+              ...file,
+              file_url: null,
+            };
+          }
+
+          return {
+            ...file,
+            file_url: `${process.env.BASE_URL}${normalizedPath}`,
+          };
+        });
+        return plain;
+      });
+
+      return callback(null, {
+        data: {
+          rows,
+          total: feedback.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(feedback.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listAppFeedback:", error);
+      logger.error("ERROR In listAppFeedback", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_APP_FEEDBACK_FAILED"));
+    }
+  }
+
+  static async replyAppFeedback({ payload }, callback) {
+    try {
+      const { feedback_id, message } = payload;
+
+      const feedback = await AppFeedback.findByPk(feedback_id, {
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email"],
+            required: false,
+          },
+        ],
+      });
+
+      if (!feedback) {
+        return callback(new Error("APP_FEEDBACK_NOT_FOUND"));
+      }
+
+      const userEmail = feedback?.user?.email;
+      if (!userEmail) {
+        return callback(new Error("FEEDBACK_USER_EMAIL_NOT_FOUND"));
+      }
+
+      await sendAppFeedbackReplyEmail({
+        to: userEmail,
+        userName: feedback?.user?.name,
+        message,
+        feedbackId: feedback.id,
+      });
+
+      // await feedback.update({
+      //   admin_reply: message,
+      //   status: "resolved",
+      //   updated_at: new Date(),
+      // });
+
+      return callback(null, {
+        data: {
+          id: feedback.id,
+          admin_reply: message,
+          replied_to: userEmail,
+        },
+      });
+    } catch (error) {
+      console.error("Error in replyAppFeedback:", error);
+      logger.error("ERROR In replyAppFeedback", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("REPLY_APP_FEEDBACK_FAILED"));
+    }
+  }
+
+  static async updateAppFeedbackStatus({ payload }, callback) {
+    try {
+      const { feedback_id, status } = payload;
+
+      const feedback = await AppFeedback.findByPk(feedback_id);
+      if (!feedback) {
+        return callback(new Error("APP_FEEDBACK_NOT_FOUND"));
+      }
+
+      feedback.status = status;
+      feedback.updated_at = new Date();
+      await feedback.save();
+
+      return callback(null, {
+        data: {
+          id: feedback.id,
+          status: feedback.status,
+          updated_at: feedback.updated_at,
+        },
+      });
+    } catch (error) {
+      console.error("Error in updateAppFeedbackStatus:", error);
+      logger.error("ERROR In updateAppFeedbackStatus", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("UPDATE_APP_FEEDBACK_STATUS_FAILED"));
+    }
+  }
+
+  static async listRequestIosAccess({ payload }, callback) {
+    try {
+      const { user_id, mobileNumber, testFlightEmail, status, limit = 10, page = 1 } = payload;
+
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const whereClause = {};
+      if (user_id) {
+        whereClause.userId = Number(user_id);
+      }
+      if (testFlightEmail) {
+        whereClause.testFlightEmail = { [Op.iLike]: `%${testFlightEmail}%` };
+      }
+      if (status) {
+        whereClause.status = status;
+      }
+
+      const userWhere = {};
+      if (mobileNumber) {
+        userWhere.phone_number = { [Op.iLike]: `%${mobileNumber}%` };
+      }
+
+      const response = await RequestIosEmail.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email", "phone_number"],
+            where: userWhere,
+            required: Boolean(mobileNumber),
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: parsedLimit,
+        offset,
+      });
+
+      const rows = response.rows.map((item) => item.toJSON());
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listRequestIosAccess:", error);
+      logger.error("ERROR In listRequestIosAccess", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_REQUEST_IOS_ACCESS_FAILED"));
+    }
+  }
+
+  static async changeRequestIosAccessStatus({ payload }, callback) {
+    try {
+      const { id, status } = payload;
+
+      const request = await RequestIosEmail.findByPk(id);
+      if (!request) {
+        return callback(new Error("REQUEST_IOS_ACCESS_NOT_FOUND"));
+      }
+
+      request.status = status;
+      request.updatedAt = new Date();
+      await request.save();
+
+      return callback(null, {
+        data: {
+          id: request.id,
+          userId: request.userId,
+          testFlightEmail: request.testFlightEmail,
+          status: request.status,
+          updatedAt: request.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error in changeRequestIosAccessStatus:", error);
+      logger.error("ERROR In changeRequestIosAccessStatus", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("CHANGE_REQUEST_IOS_ACCESS_STATUS_FAILED"));
+    }
+  }
+
+  static async updateEmailForIosAccessRequest({ payload }, callback) {
+    try {
+      const { id, testFlightEmail } = payload;
+
+      const request = await RequestIosEmail.findByPk(id);
+      if (!request) {
+        return callback(new Error("REQUEST_IOS_ACCESS_NOT_FOUND"));
+      }
+
+      request.testFlightEmail = testFlightEmail;
+      request.updatedAt = new Date();
+      await request.save();
+
+      return callback(null, {
+        data: {
+          id: request.id,
+          userId: request.userId,
+          testFlightEmail: request.testFlightEmail,
+          status: request.status,
+          updatedAt: request.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error in updateEmailForIosAccessRequest:", error);
+      logger.error("ERROR In updateEmailForIosAccessRequest", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("UPDATE_EMAIL_FOR_IOS_ACCESS_REQUEST_FAILED"));
+    }
+  }
+
+  static async replyRequestIosAccess({ payload }, callback) {
+    try {
+      const { request_id, message } = payload;
+
+      const request = await RequestIosEmail.findByPk(request_id, {
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email"],
+            required: false,
+          },
+        ],
+      });
+
+      if (!request) {
+        return callback(new Error("REQUEST_IOS_ACCESS_NOT_FOUND"));
+      }
+
+      const userEmail = request?.user?.email;
+      if (!userEmail) {
+        return callback(new Error("REQUEST_IOS_ACCESS_USER_EMAIL_NOT_FOUND"));
+      }
+
+      await sendRequestIosAccessReplyEmail({
+        to: userEmail,
+        userName: request?.user?.name,
+        message,
+        requestId: request.id,
+      });
+
+      return callback(null, {
+        data: {
+          request_id: request.id,
+          replied_to: userEmail,
+          message,
+        },
+      });
+    } catch (error) {
+      console.error("Error in replyRequestIosAccess:", error);
+      logger.error("ERROR In replyRequestIosAccess", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("REPLY_REQUEST_IOS_ACCESS_FAILED"));
+    }
+  }
+
+  static async requestForIosAccess({ userId, payload }, callback) {
+    try {
+      // Here you can implement the logic to handle the iOS access request.
+      // For example, you might want to log the request or send an email to the admin.
+      const checkExistingRequest = await RequestIosEmail.findOne({ where: { userId: userId } });
+      if (checkExistingRequest) {
+        return callback(null , { data: { message: "iOS access request already submitted." } });
+      }
+      const request = await RequestIosEmail.create({
+        userId: userId,
+        testFlightEmail: payload?.emailAddress,
+        status: "new",
+      });
+      return callback(null, { data: { message: "iOS access request submitted successfully." } });
+    } catch (error) {
+      console.error("Error in requestForIosAccess:", error);
+      logger.error("ERROR In requestForIosAccess", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("REQUEST_IOS_ACCESS_FAILED"));
+    }
+  }
+
+  static async getStatusOfIosAccessRequest({ userId }, callback) {
+    try {
+      if (!userId) {
+        return callback(new Error("USER_NOT_FOUND"));
+      }
+
+      const request = await RequestIosEmail.findOne({
+        where: { userId: Number(userId) },
+        order: [["createdAt", "DESC"]],
+        attributes: ["id", "userId", "testFlightEmail", "status", "createdAt", "updatedAt"],
+      });
+
+      if (!request) {
+        return callback(null, {
+          data: {
+            hasRequest: false,
+            request: null,
+          },
+        });
+      }
+
+      return callback(null, {
+        data: {
+          hasRequest: true,
+          request: request.toJSON(),
+        },
+      });
+    } catch (error) {
+      console.error("Error in getStatusOfIosAccessRequest:", error);
+      logger.error("ERROR In getStatusOfIosAccessRequest", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("GET_STATUS_OF_IOS_ACCESS_REQUEST_FAILED"));
+    }
+  }
+
+  static async contactAdmin({ userId, payload }, callback) {
+    try {
+      if (!userId) {
+        return callback(new Error("USER_NOT_FOUND"));
+      }
+
+      const record = await ContactAdmin.create({
+        userId: Number(userId),
+        message: payload?.message,
+      });
+
+      return callback(null, {
+        data: {
+          id: record.id,
+          message: record.message,
+          userId: record.userId,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error in contactAdmin:", error);
+      logger.error("ERROR In contactAdmin", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("CONTACT_ADMIN_FAILED"));
+    }
+  }
+
+  static async listContactAdmin({ payload }, callback) {
+    try {
+      const {
+        userId,
+        user_id,
+        mobileNumber,
+        fromDate,
+        toDate,
+        limit = 10,
+        page = 1,
+      } = payload;
+
+      const normalizedUserId = userId || user_id;
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const whereClause = {};
+      if (normalizedUserId) {
+        whereClause.userId = Number(normalizedUserId);
+      }
+
+      const createdAtFilter = {};
+
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        whereClause.createdAt = createdAtFilter;
+      }
+
+      const userWhere = {};
+      if (mobileNumber) {
+        userWhere.phone_number = { [Op.iLike]: `%${mobileNumber}%` };
+      }
+
+      const response = await ContactAdmin.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email", "phone_number"],
+            where: userWhere,
+            required: Boolean(mobileNumber),
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: parsedLimit,
+        offset,
+      });
+
+      const rows = response.rows.map((item) => item.toJSON());
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listContactAdmin:", error);
+      logger.error("ERROR In listContactAdmin", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_CONTACT_ADMIN_FAILED"));
+    }
+  }
+
+  static async replyContactAdmin({ payload }, callback) {
+    try {
+      const { contact_id, message } = payload;
+
+      const contact = await ContactAdmin.findByPk(contact_id, {
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email"],
+            required: false,
+          },
+        ],
+      });
+
+      if (!contact) {
+        return callback(new Error("CONTACT_ADMIN_NOT_FOUND"));
+      }
+
+      const userEmail = contact?.user?.email;
+      if (!userEmail) {
+        return callback(new Error("CONTACT_ADMIN_USER_EMAIL_NOT_FOUND"));
+      }
+
+      await sendContactAdminReplyEmail({
+        to: userEmail,
+        userName: contact?.user?.name,
+        message,
+        contactId: contact.id,
+      });
+
+      return callback(null, {
+        data: {
+          contact_id: contact.id,
+          replied_to: userEmail,
+          message,
+        },
+      });
+    } catch (error) {
+      console.error("Error in replyContactAdmin:", error);
+      logger.error("ERROR In replyContactAdmin", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("REPLY_CONTACT_ADMIN_FAILED"));
+    }
+  }
+
+  static async listEmergencyServicesLocation({ payload }, callback) {
+    try {
+      const {
+        requestBy,
+        userId,
+        serviceType,
+        status,
+        phoneNumber,
+        mobileNumber,
+        placeId,
+        locationName,
+        fromDate,
+        toDate,
+        limit = 10,
+        page = 1,
+      } = payload;
+
+      const normalizedRequestBy = requestBy || userId;
+      const normalizedPhoneNumber = phoneNumber || mobileNumber;
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const whereClause = {};
+
+      if (normalizedRequestBy) {
+        whereClause.requestBy = Number(normalizedRequestBy);
+      }
+      if (serviceType) {
+        whereClause.serviceType = { [Op.iLike]: `%${serviceType}%` };
+      }
+      if (status) {
+        whereClause.status = status;
+      }
+      if (normalizedPhoneNumber) {
+        whereClause.phoneNumber = { [Op.iLike]: `%${normalizedPhoneNumber}%` };
+      }
+      if (placeId) {
+        whereClause.placeId = { [Op.iLike]: `%${placeId}%` };
+      }
+      if (locationName) {
+        whereClause.locationName = { [Op.iLike]: `%${locationName}%` };
+      }
+
+      const createdAtFilter = {};
+
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        whereClause.createdAt = createdAtFilter;
+      }
+
+      const response = await EmergencyServices.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email", "phone_number", "role"],
+            required: false,
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: parsedLimit,
+        offset,
+      });
+
+      const rows = response.rows.map((item) => item.toJSON());
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in listEmergencyServicesLocation:", error);
+      logger.error("ERROR In listEmergencyServicesLocation", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("LIST_EMERGENCY_SERVICES_LOCATION_FAILED"));
+    }
+  }
+
+  static async changeEmergencyServicesLocationStatus({ payload }, callback) {
+    try {
+      const { id, status } = payload;
+
+      const emergencyService = await EmergencyServices.findByPk(id);
+      if (!emergencyService) {
+        return callback(new Error("EMERGENCY_SERVICE_LOCATION_NOT_FOUND"));
+      }
+
+      emergencyService.status = status;
+      emergencyService.updatedAt = new Date();
+      await emergencyService.save();
+
+      return callback(null, {
+        data: {
+          id: emergencyService.id,
+          status: emergencyService.status,
+          updatedAt: emergencyService.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error in changeEmergencyServicesLocationStatus:", error);
+      logger.error("ERROR In changeEmergencyServicesLocationStatus", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("CHANGE_EMERGENCY_SERVICES_LOCATION_STATUS_FAILED"));
+    }
+  }
+
+  static async getAbuseReportList({ payload }, callback) {
+    try {
+      const {
+        userId,
+        user_id,
+        abuserId,
+        abuser_id,
+        abuseType,
+        threatLevel,
+        history_of_violence,
+        weapon_access,
+        restraining_order,
+        userName,
+        mobileNumber,
+        abuserName,
+        abuserPhone,
+        abuserEmail,
+        incidentFromDate,
+        incidentToDate,
+        fromDate,
+        toDate,
+        limit = 10,
+        page = 1,
+      } = payload;
+
+      const normalizedUserId = userId || user_id;
+      const normalizedAbuserId = abuserId || abuser_id;
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      const whereClause = {};
+
+      if (normalizedUserId) {
+        whereClause.user_id = Number(normalizedUserId);
+      }
+      if (normalizedAbuserId) {
+        whereClause.abuser_id = Number(normalizedAbuserId);
+      }
+      if (abuseType) {
+        whereClause.abuse_type = { [Op.iLike]: `%${abuseType}%` };
+      }
+      if (threatLevel) {
+        whereClause.threat_level = threatLevel;
+      }
+      if (history_of_violence !== undefined) {
+        whereClause.history_of_violence = history_of_violence;
+      }
+      if (weapon_access !== undefined) {
+        whereClause.weapon_access = weapon_access;
+      }
+      if (restraining_order !== undefined) {
+        whereClause.restraining_order = restraining_order;
+      }
+
+      const incidentDateFilter = {};
+      if (incidentFromDate) {
+        const parsedIncidentFromDate = new Date(incidentFromDate);
+        if (Number.isNaN(parsedIncidentFromDate.getTime())) {
+          return callback(new Error("INVALID_INCIDENT_FROM_DATE"));
+        }
+        parsedIncidentFromDate.setHours(0, 0, 0, 0);
+        incidentDateFilter[Op.gte] = parsedIncidentFromDate;
+      }
+      if (incidentToDate) {
+        const parsedIncidentToDate = new Date(incidentToDate);
+        if (Number.isNaN(parsedIncidentToDate.getTime())) {
+          return callback(new Error("INVALID_INCIDENT_TO_DATE"));
+        }
+        parsedIncidentToDate.setHours(23, 59, 59, 999);
+        incidentDateFilter[Op.lte] = parsedIncidentToDate;
+      }
+      if (incidentFromDate && incidentToDate && incidentDateFilter[Op.gte] > incidentDateFilter[Op.lte]) {
+        return callback(new Error("INVALID_INCIDENT_DATE_RANGE"));
+      }
+      if (Object.keys(incidentDateFilter).length > 0) {
+        whereClause.incident_date = incidentDateFilter;
+      }
+
+      const createdAtFilter = {};
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+      if (Object.keys(createdAtFilter).length > 0) {
+        whereClause.created_at = createdAtFilter;
+      }
+
+      const userWhere = {};
+      if (userName) {
+        userWhere.name = { [Op.iLike]: `%${userName}%` };
+      }
+      if (mobileNumber) {
+        userWhere.phone_number = { [Op.iLike]: `%${mobileNumber}%` };
+      }
+
+      const abuserWhere = {};
+      if (abuserName) {
+        abuserWhere.full_name = { [Op.iLike]: `%${abuserName}%` };
+      }
+      if (abuserPhone) {
+        abuserWhere.phone = { [Op.iLike]: `%${abuserPhone}%` };
+      }
+      if (abuserEmail) {
+        abuserWhere.email = { [Op.iLike]: `%${abuserEmail}%` };
+      }
+
+      const response = await AbuserReports.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "name", "email", "phone_number", "role"],
+            where: userWhere,
+            required: Object.keys(userWhere).length > 0,
+          },
+          {
+            model: Abusers,
+            as: "abuser",
+            attributes: ["id", "user_id", "full_name", "alias_name", "gender", "dob", "phone", "email", "address", "photo", "created_at", "updated_at"],
+            where: abuserWhere,
+            required: Object.keys(abuserWhere).length > 0,
+          },
+          {
+            model: AbuserReportEvidenceFiles,
+            as: "evidence_files",
+            attributes: ["id", "report_id", "file_type", "file_url", "created_at"],
+            required: false,
+          },
+        ],
+        order: [["created_at", "DESC"]],
+        limit: parsedLimit,
+        offset,
+        distinct: true,
+      });
+
+      const rows = response.rows.map((item) => {
+        const plain = item.toJSON();
+
+        if (plain?.abuser?.photo) {
+          const normalizedPhotoPath = plain.abuser.photo.startsWith("/")
+            ? plain.abuser.photo
+            : `/${plain.abuser.photo}`;
+          const absolutePhotoPath = path.join(
+            process.cwd(),
+            normalizedPhotoPath.replace(/^\//, ""),
+          );
+
+          plain.abuser.photo = fs.existsSync(absolutePhotoPath)
+            ? `${process.env.BASE_URL}${normalizedPhotoPath}`
+            : null;
+        }
+
+        plain.evidence_files = (plain.evidence_files || []).map((file) => {
+          if (!file?.file_url) {
+            return {
+              ...file,
+              file_url: null,
+            };
+          }
+
+          const normalizedPath = file.file_url.startsWith("/")
+            ? file.file_url
+            : `/${file.file_url}`;
+          const absolutePath = path.join(
+            process.cwd(),
+            normalizedPath.replace(/^\//, ""),
+          );
+
+          return {
+            ...file,
+            file_url: fs.existsSync(absolutePath)
+              ? `${process.env.BASE_URL}${normalizedPath}`
+              : null,
+          };
+        });
+
+        return plain;
+      });
+
+      return callback(null, {
+        data: {
+          rows,
+          total: response.count,
+          currentPage: parsedPage,
+          totalPages: Math.ceil(response.count / parsedLimit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in getAbuseReportList:", error);
+      logger.error("ERROR In getAbuseReportList", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("GET_ABUSE_REPORT_LIST_FAILED"));
     }
   }
 }

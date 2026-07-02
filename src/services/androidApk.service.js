@@ -5,6 +5,8 @@ const { AndroidApk } = db;
 import Joi from "joi";
 import path from "path";
 import logger from "../config/winston.js";
+import fs from "fs";
+
 export default class AndroidApkService {
   // Service method for uploading Android APK
   static async uploadAndroidApp({ payload }, callback) {
@@ -31,6 +33,25 @@ export default class AndroidApkService {
       if (error) {
         return callback(new Error("INVALID_APK_PAYLOAD"));
       }
+      //remove all apk files from the database before uploading new one
+      const existingApks = await AndroidApk.findAll();
+      if(existingApks.length > 0){
+        for (const apk of existingApks) {
+          //await apk.destroy();
+          const apkFile = apk.apk_file;
+          if (apkFile) {
+            const apkFilePath = path.join(process.cwd(), "uploads", "apks", path.basename(apkFile));
+            try {
+              await fs.promises.unlink(apkFilePath);
+            } catch (err) {
+              console.error(`Error deleting file ${apkFilePath}:`, err);
+              logger.error(`Error deleting file ${apkFilePath}:`, { error: err });
+            }
+          }
+          await apk.destroy();
+        }
+      }
+  
       const createdApk = await AndroidApk.create({
         version: value.version,
         apk_file: value.apkFile.path,

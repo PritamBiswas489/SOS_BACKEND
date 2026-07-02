@@ -220,7 +220,7 @@ export default class LoginController {
           error: {  },
         };
       }
-        
+       
       
 
       if (!user.licenses || !user.licenses.id) {

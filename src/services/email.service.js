@@ -242,3 +242,78 @@ export async function emailAfterSubmitKyc(userId) {
 
 
 }
+
+export async function sendAppFeedbackReplyEmail({ to, userName, message, feedbackId }) {
+  try {
+    const subject = "Reply to your app feedback";
+    const filePath = path.resolve(process.cwd(), "emailTemplates", "kobytech-app-feedback-reply.html");
+    let html = fs.readFileSync(filePath, "utf-8");
+    const safeName = userName || "User";
+    const safeMessage = (message || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/\n/g, "<br/>");
+
+    html = html.replace(/\{\{\s*USER_NAME\s*\}\}/g, safeName);
+    html = html.replace(/\{\{\s*FEEDBACK_ID\s*\}\}/g, String(feedbackId || ""));
+    html = html.replace(/\{\{\s*REPLY_MESSAGE\s*\}\}/g, safeMessage);
+
+    await sendEmail({ to, subject, html });
+  } catch (error) {
+    console.log("Error sending app feedback reply email:", error?.message || error);
+    throw error;
+  }
+}
+
+export async function sendRequestIosAccessReplyEmail({ to, userName, message, requestId }) {
+  try {
+    const subject = "Reply to your iOS access request";
+    const filePath = path.resolve(process.cwd(), "emailTemplates", "kobytech-request-ios-access-reply.html");
+    let html = fs.readFileSync(filePath, "utf-8");
+    const safeName = userName || "User";
+    const safeMessage = (message || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/\n/g, "<br/>");
+
+    html = html.replace(/\{\{\s*USER_NAME\s*\}\}/g, safeName);
+    html = html.replace(/\{\{\s*REQUEST_ID\s*\}\}/g, String(requestId || ""));
+    html = html.replace(/\{\{\s*REPLY_MESSAGE\s*\}\}/g, safeMessage);
+
+    await sendEmail({ to:'pritam.biswas489@gmail.com', subject, html });
+  } catch (error) {
+    console.log("Error sending iOS access reply email:", error?.message || error);
+    throw error;
+  }
+}
+
+export async function sendContactAdminReplyEmail({ to, userName, message, contactId }) {
+  try {
+    const subject = "Reply to your Contact Admin message";
+    const filePath = path.resolve(process.cwd(), "emailTemplates", "kobytech-contact-admin-reply.html");
+    let html = fs.readFileSync(filePath, "utf-8");
+    const safeName = userName || "User";
+    const safeMessage = (message || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/\n/g, "<br/>");
+
+    html = html.replace(/\{\{\s*USER_NAME\s*\}\}/g, safeName);
+    html = html.replace(/\{\{\s*CONTACT_ID\s*\}\}/g, String(contactId || ""));
+    html = html.replace(/\{\{\s*REPLY_MESSAGE\s*\}\}/g, safeMessage);
+
+    await sendEmail({ to, subject, html });
+  } catch (error) {
+    console.log("Error sending contact admin reply email:", error?.message || error);
+    throw error;
+  }
+}
