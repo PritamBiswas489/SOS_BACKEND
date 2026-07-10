@@ -1123,6 +1123,8 @@ export default class AdminController {
       user_id: Joi.number().integer().positive().optional(),
       userName: Joi.string().trim().optional(),
       mobileNumber: Joi.string().trim().optional(),
+      limit: Joi.number().integer().min(1).max(100).default(10),
+      page: Joi.number().integer().min(1).default(1),
     });
 
     const { error, value } = schema.validate(payload);

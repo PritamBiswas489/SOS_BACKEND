@@ -1425,6 +1425,18 @@ router.get("/get-abouse-report-list", jwtVerifyWebAdmin, async (req, res) => {
  *         schema:
  *           type: string
  *         description: Filter by reporting user mobile number (partial match)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
  *     security:
  *       - bearerAuth: []
  *       - refreshToken: []

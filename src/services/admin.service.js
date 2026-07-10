@@ -1580,11 +1580,17 @@ export default class AdminService {
         incidentToDate,
         fromDate,
         toDate,
+        limit = 10,
+        page = 1,
         user_id,
         userId,
         userName,
         mobileNumber,
       } = payload || {};
+
+      const parsedLimit = Number(limit) || 10;
+      const parsedPage = Number(page) || 1;
+      const offset = (parsedPage - 1) * parsedLimit;
 
       const normalizedAbuserId = abuserId || abuser_id;
       const normalizedUserId = userId || user_id;
@@ -1685,7 +1691,8 @@ export default class AdminService {
         reportWhere.created_at = createdAtFilter;
       }
 
-      const abusers = await Abusers.findAll({
+      const abusers = await Abusers.findAndCountAll({
+        distinct: true,
         where: abuserWhere,
         include: [
           {
@@ -1707,11 +1714,13 @@ export default class AdminService {
           },
         ],
         order: [["created_at", "DESC"]],
+        limit: parsedLimit,
+        offset,
       });
 
       const result = [];
 
-      for (const abuser of abusers) {
+      for (const abuser of abusers.rows) {
         const reports = abuser.reports || [];
         const victims = reports.map((r) => r.user).filter(Boolean);
 
@@ -1751,7 +1760,12 @@ export default class AdminService {
       }
 
       return callback(null, {
-        data: result,
+        data: {
+          rows: result,
+          total: typeof abusers.count === "number" ? abusers.count : abusers.count.length,
+          currentPage: parsedPage,
+          totalPages: Math.ceil((typeof abusers.count === "number" ? abusers.count : abusers.count.length) / parsedLimit),
+        },
         message: "ABUSERS_WITH_REPORT_STATS_FETCHED_SUCCESSFULLY",
       });
     } catch (error) {
