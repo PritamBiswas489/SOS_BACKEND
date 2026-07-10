@@ -1467,7 +1467,7 @@ export default class AdminService {
           {
             model: User,
             as: "user",
-            attributes: ["id", "name", "email", "phone_number", "role"],
+            attributes: ["id", "name", "email", "phone_number", "role", "profile_photo"],
             where: userWhere,
             required: Object.keys(userWhere).length > 0,
           },
@@ -1502,6 +1502,13 @@ export default class AdminService {
             process.cwd(),
             normalizedPhotoPath.replace(/^\//, ""),
           );
+
+          const photo = plain?.user?.profile_photo
+          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
+          : null;
+          if (photo && plain?.user) {
+            plain.user.profile_photo = getProfileImage(photo);
+          }
 
           plain.abuser.photo = fs.existsSync(absolutePhotoPath)
             ? `${process.env.BASE_URL}${normalizedPhotoPath}`

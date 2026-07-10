@@ -13,6 +13,7 @@ import { randomSaltHex } from "../libraries/utility.js";
 import OtpVerificationService from "../services/otpVerification.service.js";
 import logger from "../config/winston.js";
 import UserService from "../services/user.service.js";
+import { getProfileImage } from "../libraries/utility.js";
  
 
 const { User, UserDevices, Op, Licenses } = db;
@@ -318,7 +319,7 @@ export default class LoginController {
           name: user.name,
           email: user.email,
           role: user.role,
-          profile_photo: user.profile_photo,
+          profile_photo:  getProfileImage(user.profile_photo),
         };
 
 
@@ -330,7 +331,7 @@ export default class LoginController {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
-          profile_photo: newUser.profile_photo,
+          profile_photo:  getProfileImage(user.profile_photo),
         };
       }
       const accessToken = await generateToken(
