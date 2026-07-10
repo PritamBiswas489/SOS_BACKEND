@@ -1300,6 +1300,144 @@ router.get("/get-abouse-report-list", jwtVerifyWebAdmin, async (req, res) => {
    res.return(response);
 });
 
+/**
+ * @swagger
+ * /api/auth-web/admin/abusers-with-report-stats:
+ *   get:
+ *     summary: Get abusers with report statistics and victims
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: abuserId
+ *         schema:
+ *           type: integer
+ *         description: Filter by abuser ID
+ *       - in: query
+ *         name: abuser_id
+ *         schema:
+ *           type: integer
+ *         description: Alias of abuserId
+ *       - in: query
+ *         name: full_name
+ *         schema:
+ *           type: string
+ *         description: Filter by abuser full name (partial match)
+ *       - in: query
+ *         name: alias_name
+ *         schema:
+ *           type: string
+ *         description: Filter by abuser alias name (partial match)
+ *       - in: query
+ *         name: gender
+ *         schema:
+ *           type: string
+ *         description: Filter by abuser gender
+ *       - in: query
+ *         name: phone
+ *         schema:
+ *           type: string
+ *         description: Filter by abuser phone number (partial match)
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Filter by abuser email (partial match)
+ *       - in: query
+ *         name: abuseType
+ *         schema:
+ *           type: string
+ *         description: Filter by abuse type (partial match)
+ *       - in: query
+ *         name: abuse_type
+ *         schema:
+ *           type: string
+ *         description: Alias of abuseType
+ *       - in: query
+ *         name: threatLevel
+ *         schema:
+ *           type: string
+ *           enum: [Low, Medium, High]
+ *         description: Filter by threat level
+ *       - in: query
+ *         name: threat_level
+ *         schema:
+ *           type: string
+ *           enum: [Low, Medium, High]
+ *         description: Alias of threatLevel
+ *       - in: query
+ *         name: history_of_violence
+ *         schema:
+ *           type: boolean
+ *         description: Filter by history of violence flag
+ *       - in: query
+ *         name: weapon_access
+ *         schema:
+ *           type: boolean
+ *         description: Filter by weapon access flag
+ *       - in: query
+ *         name: restraining_order
+ *         schema:
+ *           type: boolean
+ *         description: Filter by restraining order flag
+ *       - in: query
+ *         name: incidentFromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter records where incident_date is on or after this date
+ *       - in: query
+ *         name: incidentToDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter records where incident_date is on or before this date
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter records created on or after this date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter records created on or before this date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: integer
+ *         description: Filter by reporting user ID
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *         description: Alias of userId
+ *       - in: query
+ *         name: userName
+ *         schema:
+ *           type: string
+ *         description: Filter by reporting user name (partial match)
+ *       - in: query
+ *         name: mobileNumber
+ *         schema:
+ *           type: string
+ *         description: Filter by reporting user mobile number (partial match)
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Abusers with report stats fetched successfully
+ *       400:
+ *         description: Failed to fetch abusers with report stats
+ */
+router.get("/abusers-with-report-stats", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.getAbusersWithReportStats({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
 
 
 /**

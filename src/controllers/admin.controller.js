@@ -1098,6 +1098,91 @@ export default class AdminController {
     });
   }
 
+  static async getAbusersWithReportStats(request) {
+    const { payload, headers } = request;
+    const schema = Joi.object({
+      abuserId: Joi.number().integer().positive().optional(),
+      abuser_id: Joi.number().integer().positive().optional(),
+      full_name: Joi.string().trim().optional(),
+      alias_name: Joi.string().trim().optional(),
+      gender: Joi.string().trim().optional(),
+      phone: Joi.string().trim().optional(),
+      email: Joi.string().trim().optional(),
+      abuseType: Joi.string().trim().optional(),
+      abuse_type: Joi.string().trim().optional(),
+      threatLevel: Joi.string().valid("Low", "Medium", "High").optional(),
+      threat_level: Joi.string().valid("Low", "Medium", "High").optional(),
+      history_of_violence: Joi.alternatives().try(Joi.boolean(), Joi.string().valid("true", "false", "1", "0")).optional(),
+      weapon_access: Joi.alternatives().try(Joi.boolean(), Joi.string().valid("true", "false", "1", "0")).optional(),
+      restraining_order: Joi.alternatives().try(Joi.boolean(), Joi.string().valid("true", "false", "1", "0")).optional(),
+      incidentFromDate: Joi.date().iso().optional(),
+      incidentToDate: Joi.date().iso().optional(),
+      fromDate: Joi.date().iso().optional(),
+      toDate: Joi.date().iso().optional(),
+      userId: Joi.number().integer().positive().optional(),
+      user_id: Joi.number().integer().positive().optional(),
+      userName: Joi.string().trim().optional(),
+      mobileNumber: Joi.string().trim().optional(),
+    });
+
+    const { error, value } = schema.validate(payload);
+    if (error) {
+      return {
+        status: 400,
+        data: null,
+        error: {
+          message: headers?.i18n.__(error.details[0].message || "VALIDATION_ERROR"),
+          reason: error.details[0].message,
+        },
+      };
+    }
+
+    const parseBooleanInput = (booleanValue) => {
+      if (booleanValue === undefined) {
+        return undefined;
+      }
+
+      if (typeof booleanValue === "boolean") {
+        return booleanValue;
+      }
+
+      return booleanValue === "true" || booleanValue === "1";
+    };
+
+    const normalizedPayload = {
+      ...value,
+      abuserId: value.abuserId || value.abuser_id,
+      userId: value.userId || value.user_id,
+      abuseType: value.abuseType || value.abuse_type,
+      threatLevel: value.threatLevel || value.threat_level,
+      history_of_violence: parseBooleanInput(value.history_of_violence),
+      weapon_access: parseBooleanInput(value.weapon_access),
+      restraining_order: parseBooleanInput(value.restraining_order),
+    };
+
+    return new Promise((resolve) => {
+      AdminService.getAbusersWithReportStats({ payload: normalizedPayload, headers }, (err, response) => {
+        if (err) {
+          return resolve({
+            status: 400,
+            data: null,
+            error: {
+              message: headers?.i18n.__(err.message || "GET_ABUSERS_WITH_REPORT_STATS_FAILED"),
+              reason: err.message,
+            },
+          });
+        }
+
+        return resolve({
+          status: 200,
+          data: response.data,
+          message: headers?.i18n.__("GET_ABUSERS_WITH_REPORT_STATS_SUCCESSFUL"),
+          error: null,
+        });
+      });
+    });
+  }
+
   static async contactAdmin(request) {
     const { payload, headers, user } = request;
     const userId = user?.id;

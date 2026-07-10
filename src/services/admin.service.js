@@ -432,8 +432,8 @@ export default class AdminService {
         lock: transaction.LOCK.UPDATE, // also add a lock since we're about to mutate
       });
 
-       
-     
+
+
       // Bug 2 fixed: rollback before returning
       if (!kycDocument) {
         await transaction.rollback();
@@ -447,7 +447,7 @@ export default class AdminService {
       if (status === "approved") {
         // Bug 4 fixed: use actual ngo_id instead of hardcoded "00"
         const ngoId = kycDocument.ngo_id; // ensure this field exists on the document
-        const licenseNumber  = `KBY-${ (String(kycDocument.user_id).length > 6 ? '1' : String(kycDocument.user_id)).padStart(6, "0")}`;
+        const licenseNumber = `KBY-${(String(kycDocument.user_id).length > 6 ? '1' : String(kycDocument.user_id)).padStart(6, "0")}`;
         await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
         const license = await Licenses.create(
           {
@@ -470,7 +470,7 @@ export default class AdminService {
 
         await transaction.commit();
         return callback(null, { data: { document: kycDocument, license } });
-      }else if (status === "rejected"){
+      } else if (status === "rejected") {
         await Licenses.destroy({ where: { user_id: kycDocument.user_id }, transaction });
       }
 
@@ -992,7 +992,7 @@ export default class AdminService {
       // For example, you might want to log the request or send an email to the admin.
       const checkExistingRequest = await RequestIosEmail.findOne({ where: { userId: userId } });
       if (checkExistingRequest) {
-        return callback(null , { data: { message: "iOS access request already submitted." } });
+        return callback(null, { data: { message: "iOS access request already submitted." } });
       }
       const request = await RequestIosEmail.create({
         userId: userId,
@@ -1467,7 +1467,7 @@ export default class AdminService {
           {
             model: User,
             as: "user",
-            attributes: ["id", "name", "email", "phone_number", "role", "profile_photo"],
+            attributes: ["id", "name", "email", "phone_number", "role", "profile_photo"],
             where: userWhere,
             required: Object.keys(userWhere).length > 0,
           },
@@ -1503,7 +1503,7 @@ export default class AdminService {
             normalizedPhotoPath.replace(/^\//, ""),
           );
 
-          
+
 
           plain.abuser.photo = fs.existsSync(absolutePhotoPath)
             ? `${process.env.BASE_URL}${normalizedPhotoPath}`
@@ -1513,9 +1513,9 @@ export default class AdminService {
         const usrPhoto = plain?.user?.profile_photo
           ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
           : null;
-          if (usrPhoto) {
-            plain.user.profile_photo = getProfileImage(usrPhoto);
-          }
+        if (usrPhoto) {
+          plain.user.profile_photo = getProfileImage(usrPhoto);
+        }
 
         plain.evidence_files = (plain.evidence_files || []).map((file) => {
           if (!file?.file_url) {
@@ -1557,6 +1557,207 @@ export default class AdminService {
       logger.error("ERROR In getAbuseReportList", { error: error });
       process.env.NODE_ENV === "production" && Sentry.captureException(error);
       return callback(new Error("GET_ABUSE_REPORT_LIST_FAILED"));
+    }
+  }
+  static async getAbusersWithReportStats({ payload }, callback) {
+    try {
+      const {
+        abuser_id,
+        abuserId,
+        full_name,
+        alias_name,
+        gender,
+        phone,
+        email,
+        abuse_type,
+        abuseType,
+        threat_level,
+        threatLevel,
+        history_of_violence,
+        weapon_access,
+        restraining_order,
+        incidentFromDate,
+        incidentToDate,
+        fromDate,
+        toDate,
+        user_id,
+        userId,
+        userName,
+        mobileNumber,
+      } = payload || {};
+
+      const normalizedAbuserId = abuserId || abuser_id;
+      const normalizedUserId = userId || user_id;
+
+      const abuserWhere = {};
+      if (normalizedAbuserId) {
+        abuserWhere.id = Number(normalizedAbuserId);
+      }
+      if (full_name) {
+        abuserWhere.full_name = { [Op.iLike]: `%${full_name}%` };
+      }
+      if (alias_name) {
+        abuserWhere.alias_name = { [Op.iLike]: `%${alias_name}%` };
+      }
+      if (gender) {
+        abuserWhere.gender = gender;
+      }
+      if (phone) {
+        abuserWhere.phone = { [Op.iLike]: `%${phone}%` };
+      }
+      if (email) {
+        abuserWhere.email = { [Op.iLike]: `%${email}%` };
+      }
+
+      const victimWhere = {};
+      if (normalizedUserId) {
+        victimWhere.id = Number(normalizedUserId);
+      }
+      if (userName) {
+        victimWhere.name = { [Op.iLike]: `%${userName}%` };
+      }
+      if (mobileNumber) {
+        victimWhere.phone_number = { [Op.iLike]: `%${mobileNumber}%` };
+      }
+
+      const reportWhere = {};
+      if (abuse_type || abuseType) {
+        reportWhere.abuse_type = { [Op.iLike]: `%${abuse_type || abuseType}%` };
+      }
+      if (threat_level || threatLevel) {
+        reportWhere.threat_level = threat_level || threatLevel;
+      }
+      if (history_of_violence !== undefined) {
+        reportWhere.history_of_violence = history_of_violence;
+      }
+      if (weapon_access !== undefined) {
+        reportWhere.weapon_access = weapon_access;
+      }
+      if (restraining_order !== undefined) {
+        reportWhere.restraining_order = restraining_order;
+      }
+
+      const incidentDateFilter = {};
+      if (incidentFromDate) {
+        const parsedIncidentFromDate = new Date(incidentFromDate);
+        if (Number.isNaN(parsedIncidentFromDate.getTime())) {
+          return callback(new Error("INVALID_INCIDENT_FROM_DATE"));
+        }
+        parsedIncidentFromDate.setHours(0, 0, 0, 0);
+        incidentDateFilter[Op.gte] = parsedIncidentFromDate;
+      }
+      if (incidentToDate) {
+        const parsedIncidentToDate = new Date(incidentToDate);
+        if (Number.isNaN(parsedIncidentToDate.getTime())) {
+          return callback(new Error("INVALID_INCIDENT_TO_DATE"));
+        }
+        parsedIncidentToDate.setHours(23, 59, 59, 999);
+        incidentDateFilter[Op.lte] = parsedIncidentToDate;
+      }
+      if (incidentFromDate && incidentToDate && incidentDateFilter[Op.gte] > incidentDateFilter[Op.lte]) {
+        return callback(new Error("INVALID_INCIDENT_DATE_RANGE"));
+      }
+      if (Object.keys(incidentDateFilter).length > 0) {
+        reportWhere.incident_date = incidentDateFilter;
+      }
+
+      const createdAtFilter = {};
+      if (fromDate) {
+        const parsedFromDate = new Date(fromDate);
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return callback(new Error("INVALID_FROM_DATE"));
+        }
+        parsedFromDate.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = parsedFromDate;
+      }
+      if (toDate) {
+        const parsedToDate = new Date(toDate);
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return callback(new Error("INVALID_TO_DATE"));
+        }
+        parsedToDate.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = parsedToDate;
+      }
+      if (fromDate && toDate && createdAtFilter[Op.gte] > createdAtFilter[Op.lte]) {
+        return callback(new Error("INVALID_DATE_RANGE"));
+      }
+      if (Object.keys(createdAtFilter).length > 0) {
+        reportWhere.created_at = createdAtFilter;
+      }
+
+      const abusers = await Abusers.findAll({
+        where: abuserWhere,
+        include: [
+          {
+            model: AbuserReports,
+            as: "reports",
+            where: reportWhere,
+            required:
+              Object.keys(victimWhere).length > 0 ||
+              Object.keys(reportWhere).length > 0,
+            include: [
+              {
+                model: User,
+                as: "user",
+                attributes: ["id", "name", "email", "phone_number", "profile_photo"],
+                where: victimWhere,
+                required: Object.keys(victimWhere).length > 0,
+              },
+            ],
+          },
+        ],
+        order: [["created_at", "DESC"]],
+      });
+
+      const result = [];
+
+      for (const abuser of abusers) {
+        const reports = abuser.reports || [];
+        const victims = reports.map((r) => r.user).filter(Boolean);
+
+        // dedupe victims (same user may report the same abuser more than once)
+        const uniqueVictims = Array.from(
+          new Map(victims.map((v) => [v.id, v])).values(),
+        ).map((victim) => {
+          const victimPlain = victim.toJSON();
+          const victimPhoto = victimPlain?.profile_photo
+            ? `${process.env.IMAGE_BASE_URL}${victimPlain.profile_photo}`
+            : null;
+
+          return {
+            ...victimPlain,
+            profile_photo: victimPhoto ? getProfileImage(victimPhoto) : null,
+          };
+        });
+
+        let photo = abuser.photo;
+        if (photo) {
+          photo = getProfileImage(`${process.env.BASE_URL}${photo}`);
+        } else {
+          photo = null;
+        }
+
+        result.push({
+          id: abuser.id,
+          full_name: abuser.full_name,
+          alias_name: abuser.alias_name,
+          gender: abuser.gender,
+          phone: abuser.phone,
+          email: abuser.email,
+          photo,
+          report_count: reports.length,
+          victims: uniqueVictims,
+        });
+      }
+
+      return callback(null, {
+        data: result,
+        message: "ABUSERS_WITH_REPORT_STATS_FETCHED_SUCCESSFULLY",
+      });
+    } catch (error) {
+      logger.error("ERROR In getAbusersWithReportStats", { error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_ABUSERS_WITH_REPORT_STATS_FAILED"), null);
     }
   }
 }
