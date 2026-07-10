@@ -1503,17 +1503,19 @@ export default class AdminService {
             normalizedPhotoPath.replace(/^\//, ""),
           );
 
-          const photo = plain?.user?.profile_photo
-          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
-          : null;
-          if (photo && plain?.user) {
-            plain.user.profile_photo = getProfileImage(photo);
-          }
+          
 
           plain.abuser.photo = fs.existsSync(absolutePhotoPath)
             ? `${process.env.BASE_URL}${normalizedPhotoPath}`
             : null;
         }
+
+        const usrPhoto = plain?.user?.profile_photo
+          ? `${process.env.IMAGE_BASE_URL}${plain.user.profile_photo}`
+          : null;
+          if (usrPhoto) {
+            plain.user.profile_photo = getProfileImage(usrPhoto);
+          }
 
         plain.evidence_files = (plain.evidence_files || []).map((file) => {
           if (!file?.file_url) {
