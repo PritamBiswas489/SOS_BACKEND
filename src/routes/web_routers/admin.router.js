@@ -5,6 +5,7 @@ import { default as jwtVerifyWebAdmin } from "../../middlewares/jwtVerifyWebAdmi
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import EmergencyServicesController from "../../controllers/emergencyServices.controller.js";
 const router = express.Router();
 
 /**
@@ -1298,5 +1299,70 @@ router.get("/get-abouse-report-list", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.getAbuseReportList({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
+
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/register-new-location:
+ *   post:
+ *     summary: Request registration of a new emergency service
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationName
+ *               - latitude
+ *               - longitude
+ *               - address
+ *               - phoneNumber
+ *               - placeId
+ *               - serviceType
+ *             properties:
+ *               locationName:
+ *                 type: string
+ *                 example: "SSKM Hospital"
+ *               latitude:
+ *                 type: number
+ *                 example: 22.5392
+ *               longitude:
+ *                 type: number
+ *                 example: 88.3426
+ *               address:
+ *                 type: string
+ *                 example: "244 AJC Bose Road, Kolkata, West Bengal"
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "03322041100"
+ *               placeId:
+ *                 type: string
+ *                 example: "kol_hospital_001"
+ *               serviceType:
+ *                 type: string
+ *                 example: "hospital"
+ *     responses:
+ *       200:
+ *         description: Registration request submitted successfully
+ *       400:
+ *         description: Bad request
+ */
+router.post('/register-new-location', jwtVerifyWebAdmin, async (req, res) => {
+  const response = await EmergencyServicesController.requestRegisterNewEmergencyService({
+    payload: { ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
+
+
 
 export default router;

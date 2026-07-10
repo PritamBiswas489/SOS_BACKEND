@@ -8,6 +8,8 @@ import { default as jwtVerifyWebNgo } from "../../middlewares/jwtVerifyWebNgo.js
 import User from "../../databases/models/User.js";
 import AdminController from "../../controllers/admin.controller.js";
 import crypto from "crypto";
+import EmergencyServicesController from "../../controllers/emergencyServices.controller.js";
+import { contactAdminApiRateLimiter } from "../../middlewares/otpRateLimiter.js";
  
 const router = express.Router();
 
@@ -336,7 +338,151 @@ router.get("/ngo-sos-list", jwtVerifyWebNgo, async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /api/auth-web/ngo/request-register-new-location:
+ *   post:
+ *     summary: Request registration of a new emergency service
+ *     tags:
+ *       - NGO authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationName
+ *               - latitude
+ *               - longitude
+ *               - address
+ *               - phoneNumber
+ *               - placeId
+ *               - serviceType
+ *             properties:
+ *               locationName:
+ *                 type: string
+ *                 example: "SSKM Hospital"
+ *               latitude:
+ *                 type: number
+ *                 example: 22.5392
+ *               longitude:
+ *                 type: number
+ *                 example: 88.3426
+ *               address:
+ *                 type: string
+ *                 example: "244 AJC Bose Road, Kolkata, West Bengal"
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "03322041100"
+ *               placeId:
+ *                 type: string
+ *                 example: "kol_hospital_001"
+ *               serviceType:
+ *                 type: string
+ *                 example: "hospital"
+ *     responses:
+ *       200:
+ *         description: Registration request submitted successfully
+ *       400:
+ *         description: Bad request
+ */
+router.post('/request-register-new-location', jwtVerifyWebNgo, async (req, res) => {
+  const response = await EmergencyServicesController.requestRegisterNewEmergencyService({
+    payload: { ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
 
+
+/**
+ * @swagger
+ * /api/auth-web/ngo/get-my-requested-emergency-services:
+ *   get:
+ *     summary: Get emergency services requested by the logged-in user
+ *     tags:
+ *       - NGO authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number for paginated results
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of records per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: User requested emergency services fetched successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+
+router.get('/get-my-requested-emergency-services', jwtVerifyWebNgo, async (req, res) => {
+  const response = await EmergencyServicesController.getMyRequestedEmergencyServices({
+    payload: { ...req.query },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
+
+
+
+
+/**
+ * @swagger
+ * /api/auth-web/ngo/contact-admin:
+ *   post:
+ *     summary: Send message to admin
+ *     tags:
+ *       - NGO authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Message from user to admin
+ *                 example: Please contact me regarding my account issue.
+ *             required:
+ *               - message
+ *     responses:
+ *       200:
+ *         description: Message sent to admin successfully
+ *       400:
+ *         description: Failed to send message to admin
+ */
+router.post('/contact-admin', jwtVerifyWebNgo, contactAdminApiRateLimiter, async (req, res, next) => {
+  const response = await AdminController.contactAdmin({
+    payload: { ...req.params, ...req.query, ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
 
  
 export default router;

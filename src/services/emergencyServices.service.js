@@ -172,6 +172,7 @@ static async getMyRequestedEmergencyServices({ userid }, callback) {
       message: "MY_REQUESTED_EMERGENCY_SERVICES_FETCHED_SUCCESSFULLY",
     });
   }catch(error){
+    console.error("Error in getMyRequestedEmergencyServices:", error);
     logger.error("ERROR In getMyRequestedEmergencyServices", { error });
     process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
     return callback(new Error("GET_MY_REQUESTED_EMERGENCY_SERVICES_FAILED"), null);

@@ -65,6 +65,7 @@ export default class EmergencyServicesController {
     static async getMyRequestedEmergencyServices(request) {
         const { payload, headers, user } = request;
         const userid = user?.id;
+        console.log("userid", userid);
         return new Promise((resolve) => {
             EmergencyServicesService.getMyRequestedEmergencyServices(
                 { payload, userid },
