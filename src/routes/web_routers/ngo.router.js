@@ -308,14 +308,12 @@ router.get("/user-list-for-ngo", jwtVerifyWebNgo, async (req, res) => {
  *         schema:
  *           type: string
  *           format: date
- *           example: "2026-07-01"
  *         description: Filter SOS sessions created on or after this date
  *       - in: query
  *         name: toDate
  *         schema:
  *           type: string
  *           format: date
- *           example: "2026-07-31"
  *         description: Filter SOS sessions created on or before this date
  *     security:
  *       - bearerAuth: []

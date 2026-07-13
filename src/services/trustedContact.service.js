@@ -11,7 +11,7 @@ import fs from "fs";
 import { getProfileImage } from "../libraries/utility.js";
 import UserLocationService from "./userLocation.service.js";
 import HeartRateService from "./heartRate.service.js";
- 
+
 
 export default class TrustedContactService {
   //send trusted contact invitation
@@ -23,16 +23,16 @@ export default class TrustedContactService {
     console.log("Payload:", payload);
     try {
 
-    //check 10 trusted contacts limit
-    const trustedContactCount = await TrustedContacts.count({
-      where: {
-        user_id: userid,
-        status: "accepted",
-      },
-    });
-    if (trustedContactCount >= 10) {
-      return callback(new Error("TRUSTED_CONTACT_LIMIT_REACHED"), null);
-    }
+      //check 10 trusted contacts limit
+      const trustedContactCount = await TrustedContacts.count({
+        where: {
+          user_id: userid,
+          status: "accepted",
+        },
+      });
+      if (trustedContactCount >= 10) {
+        return callback(new Error("TRUSTED_CONTACT_LIMIT_REACHED"), null);
+      }
 
       const { name, mobile_number, relationship, sos_alert, share_location } = payload;
       const getUser = await User.findOne({
@@ -66,25 +66,25 @@ export default class TrustedContactService {
           ],
         },
       });
-       
+
       if (checkExistingContact) {
-         
-        console.log("userid",userid);
-        console.log({userId :  checkExistingContact.user_id, trustedUserId: checkExistingContact.trusted_user_id, status: checkExistingContact.status});
+
+        console.log("userid", userid);
+        console.log({ userId: checkExistingContact.user_id, trustedUserId: checkExistingContact.trusted_user_id, status: checkExistingContact.status });
         console.log("Existing trusted contact found:", checkExistingContact.toJSON());
-          if(checkExistingContact.status === "pending" && userid === checkExistingContact.user_id){
-             
-            return callback(new Error("TRUSTED_CONTACT_INVITATION_ALREADY_SENT"), null);
-          }
-          else if(checkExistingContact.status === "pending" && userid === checkExistingContact.trusted_user_id){
-             
-               return callback(new Error("TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER"), null);
-          }
-          else if(checkExistingContact.status === "accepted"){
-              return callback(new Error("TRUSTED_CONTACT_ALREADY_EXISTS"), null);
-          }
+        if (checkExistingContact.status === "pending" && userid === checkExistingContact.user_id) {
+
+          return callback(new Error("TRUSTED_CONTACT_INVITATION_ALREADY_SENT"), null);
+        }
+        else if (checkExistingContact.status === "pending" && userid === checkExistingContact.trusted_user_id) {
+
+          return callback(new Error("TRUSTED_CONTACT_INVITATION_PENDING_FROM_OTHER_USER"), null);
+        }
+        else if (checkExistingContact.status === "accepted") {
+          return callback(new Error("TRUSTED_CONTACT_ALREADY_EXISTS"), null);
+        }
       }
-    
+
       const newTrustedContact = await TrustedContacts.create({
         user_id: userid,
         trusted_user_id: getUser.id,
@@ -98,19 +98,19 @@ export default class TrustedContactService {
         newTrustedContact,
       );
 
-       let recipientDeviceTokens = [];
-       recipientDeviceTokens = await promisify(
-           UserService.getUserDeviceTokens.bind(UserService),
-           getUser.id,
-         ).catch((err) => {});
+      let recipientDeviceTokens = [];
+      recipientDeviceTokens = await promisify(
+        UserService.getUserDeviceTokens.bind(UserService),
+        getUser.id,
+      ).catch((err) => { });
 
-         if(recipientDeviceTokens.length > 0){
-            enqueueBulk(recipientDeviceTokens, {
-              title: "New Trusted Contact Invitation",
-              body: `You have received a trusted contact invitation from ${newTrustedContact.nickname || "a user"}.`,
-              data: { invitationId: newTrustedContact.id, messageType: "NEW_TRUSTED_CONTACT_INVITATION" },
-            });
-         }
+      if (recipientDeviceTokens.length > 0) {
+        enqueueBulk(recipientDeviceTokens, {
+          title: "New Trusted Contact Invitation",
+          body: `You have received a trusted contact invitation from ${newTrustedContact.nickname || "a user"}.`,
+          data: { invitationId: newTrustedContact.id, messageType: "NEW_TRUSTED_CONTACT_INVITATION" },
+        });
+      }
       return callback(null, { data: newTrustedContact });
     } catch (error) {
       logger.error("ERROR In sendTrustedContactInvitation", { error: error });
@@ -127,14 +127,14 @@ export default class TrustedContactService {
           [Op.or]: [
             { user_id: userid },
             { trusted_user_id: userid }
-          ]       
+          ]
         },
         include: [
           {
             model: User,
             as: "trusted_contact",
             where: { is_active: true },
-            include:[
+            include: [
               {
                 model: Devices,
                 as: "devices",
@@ -143,14 +143,14 @@ export default class TrustedContactService {
                 attributes: ["id", "device_token", "device_type"],
               }
             ],
-            attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
+            attributes: ["id", "name", "phone_number", "profile_photo", "is_online", "latitude", "longitude"],
             required: true,
           },
           {
             model: User,
             as: "inviter",
             where: { is_active: true },
-            include:[
+            include: [
               {
                 model: Devices,
                 as: "devices",
@@ -159,28 +159,28 @@ export default class TrustedContactService {
                 attributes: ["id", "device_token", "device_type"],
               }
             ],
-            attributes: ["id", "name", "phone_number", "profile_photo","is_online", "latitude", "longitude"],
+            attributes: ["id", "name", "phone_number", "profile_photo", "is_online", "latitude", "longitude"],
             required: true,
           },
         ],
       });
-        const friendsData = friends.map((friend) => {
-          const friendData = friend.toJSON();
-          const trustedContactProfilePhoto = friendData.trusted_contact?.profile_photo;
-           friendData.trusted_contact.profile_photo = getProfileImage(trustedContactProfilePhoto);
-          const inviterProfilePhoto = friendData.inviter?.profile_photo;
-          friendData.inviter.profile_photo = getProfileImage(inviterProfilePhoto);
-          
-          return friendData;
-        });
+      const friendsData = friends.map((friend) => {
+        const friendData = friend.toJSON();
+        const trustedContactProfilePhoto = friendData.trusted_contact?.profile_photo;
+        friendData.trusted_contact.profile_photo = getProfileImage(trustedContactProfilePhoto);
+        const inviterProfilePhoto = friendData.inviter?.profile_photo;
+        friendData.inviter.profile_photo = getProfileImage(inviterProfilePhoto);
+
+        return friendData;
+      });
       return callback(null, { data: friendsData });
-    }catch (error) {
+    } catch (error) {
       logger.error("ERROR In chatContactFriendList", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("GET_CHAT_CONTACT_FRIEND_LIST_FAILED"), null);
     }
-    
-      
+
+
   }
   //accept trusted contact invitation
   static async acceptTrustedContactInvitation(
@@ -203,7 +203,7 @@ export default class TrustedContactService {
               where: { is_active: true },
               attributes: ["id", "name", "phone_number"],
               required: true,
-               include: [
+              include: [
                 {
                   model: Devices,
                   as: "devices",
@@ -217,19 +217,19 @@ export default class TrustedContactService {
               as: "trusted_contact",
               where: { is_active: true },
               attributes: ["id", "name", "phone_number"],
-             
+
               required: true,
             }
           ],
         },
-        { 
-            lock: transaction.LOCK.UPDATE,
-            transaction 
+        {
+          lock: transaction.LOCK.UPDATE,
+          transaction
         },
       );
       if (!invitation) {
-         await transaction.rollback();
-         return callback(new Error("INVITATION_NOT_FOUND"), null);
+        await transaction.rollback();
+        return callback(new Error("INVITATION_NOT_FOUND"), null);
       }
       invitation.status = "accepted";
       await invitation.save({ transaction });
@@ -263,7 +263,7 @@ export default class TrustedContactService {
 
       await transaction.commit();
 
-      if(invitation?.inviter && invitation?.inviter.devices) {
+      if (invitation?.inviter && invitation?.inviter.devices) {
         for (const device of invitation.inviter.devices) {
           if (device.device_token) {
             enqueueBulk([device.device_token], {
@@ -271,7 +271,7 @@ export default class TrustedContactService {
               body: `${invitation?.trusted_contact?.name || invitation?.trusted_contact?.phone_number} has accepted your trusted contact invitation.`,
               data: { invitationId: invitation.id, messageType: "ACCEPTED_TRUSTED_CONTACT" },
             });
-            
+
           }
         }
       }
@@ -382,7 +382,7 @@ export default class TrustedContactService {
                 attributes: ["id", "device_token", "device_type"],
               },
             ],
-            attributes: ["id", "name", "phone_number", "profile_photo","is_online"],
+            attributes: ["id", "name", "phone_number", "profile_photo", "is_online"],
             required: true,
           },
         ],
@@ -391,7 +391,7 @@ export default class TrustedContactService {
         const contactData = contact.toJSON();
         if (contactData.trusted_contact && contactData.trusted_contact.profile_photo) {
           const userAvatafrUrl = contactData.trusted_contact.profile_photo;
-           contactData.trusted_contact.profile_photo = getProfileImage(userAvatafrUrl);
+          contactData.trusted_contact.profile_photo = getProfileImage(userAvatafrUrl);
         }
         return contactData;
       });
@@ -444,7 +444,7 @@ export default class TrustedContactService {
       ) {
         return callback(new Error("UNAUTHORIZED_ACTION"), null);
       }
-      if(invitation.status !== "pending"){
+      if (invitation.status !== "pending") {
         return callback(new Error("ONLY_PENDING_INVITATIONS_CAN_BE_CANCELED"), null);
       }
       invitation.status = "canceled";
@@ -494,7 +494,7 @@ export default class TrustedContactService {
                 {
                   model: Devices,
                   as: "devices",
-                  required: false,                  
+                  required: false,
                   attributes: ["id", "device_token", "device_type"],
                 },
               ],
@@ -516,7 +516,7 @@ export default class TrustedContactService {
         invitation.user_id !== userid &&
         invitation.trusted_user_id !== userid
       ) {
-        await transaction.rollback(); 
+        await transaction.rollback();
         return callback(new Error("UNAUTHORIZED_ACTION"), null);
       }
       if (invitation.status === "accepted") {
@@ -534,44 +534,44 @@ export default class TrustedContactService {
               },
             ],
           },
-        },{
+        }, {
           transaction,
         });
-         await transaction.commit();
-           if (
-             invitation?.trusted_contact &&
-             invitation?.trusted_contact.devices
-           ) {
-             for (const device of invitation.trusted_contact.devices) {
-               if (device.device_token) {
-                enqueueBulk([device.device_token], {
-                  title: "Trusted Contact Invitation Deleted",
-                  body: `You are no longer a trusted contact of ${invitation?.inviter?.name}.`,
-                  data: { invitationId: invitation.id, messageType: "DELETED_TRUSTED_CONTACT" },
-                }); 
-               }
-             }
-           }
-         
+        await transaction.commit();
+        if (
+          invitation?.trusted_contact &&
+          invitation?.trusted_contact.devices
+        ) {
+          for (const device of invitation.trusted_contact.devices) {
+            if (device.device_token) {
+              enqueueBulk([device.device_token], {
+                title: "Trusted Contact Invitation Deleted",
+                body: `You are no longer a trusted contact of ${invitation?.inviter?.name}.`,
+                data: { invitationId: invitation.id, messageType: "DELETED_TRUSTED_CONTACT" },
+              });
+            }
+          }
+        }
+
         return callback(null, {
           data: invitation,
 
         });
       }
-      
+
       await invitation.destroy();
       await transaction.commit();
       return callback(null, {
         data: "Successfully deleted trusted contact invitation",
       });
     } catch (error) {
-        await transaction.rollback();
+      await transaction.rollback();
       logger.error("ERROR In deleteTrustedContactInvitation", { error: error });
       process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
       return callback(new Error("DELETE_TRUSTED_CONTACT_FAILED"), null);
     }
   }
-   
+
   static async countTrustedContacts({ userid, payload, headers }, callback) {
     try {
       const count = await TrustedContacts.count({
@@ -588,24 +588,24 @@ export default class TrustedContactService {
     }
   }
 
-  static async   getLocationShareContactIds(userId) {
-      const contacts = await TrustedContacts.findAll({
-          where: {
-              status: "accepted",
-              // share_location: true,
-              // eslint-disable-next-line import/no-named-as-default-member
-              [db.Sequelize.Op.or]: [
-                  { user_id: userId },
-                  { trusted_user_id: userId },
-              ],
-          },
-          attributes: ["user_id", "trusted_user_id"],
-      });
-      return contacts.map((c) =>
-          Number(c.user_id) === Number(userId)
-              ? Number(c.trusted_user_id)
-              : Number(c.user_id)
-      );
+  static async getLocationShareContactIds(userId) {
+    const contacts = await TrustedContacts.findAll({
+      where: {
+        status: "accepted",
+        // share_location: true,
+        // eslint-disable-next-line import/no-named-as-default-member
+        [db.Sequelize.Op.or]: [
+          { user_id: userId },
+          { trusted_user_id: userId },
+        ],
+      },
+      attributes: ["user_id", "trusted_user_id"],
+    });
+    return contacts.map((c) =>
+      Number(c.user_id) === Number(userId)
+        ? Number(c.trusted_user_id)
+        : Number(c.user_id)
+    );
   }
   //get trusted contacts locations
   static async getTrustedContactsLocations({ userid, payload, headers }, callback) {
@@ -631,23 +631,121 @@ export default class TrustedContactService {
   static async getTrustedContactsHeartRateReadings({ userid, payload, headers }, callback) {
     console.log("Fetching trusted contacts' heart rate readings for user ID:", userid);
     console.log("Payload:", payload);
-      try {
-        const contactIds = await this.getLocationShareContactIds(userid);
-        const uniqueContactIds = [...new Set(contactIds)];
-         const contacts = await promisify(
+    try {
+      const contactIds = await this.getLocationShareContactIds(userid);
+      const uniqueContactIds = [...new Set(contactIds)];
+      const contacts = await promisify(
         HeartRateService.getContactLatestStressReading.bind(HeartRateService),
-          uniqueContactIds,
-        ).catch((_err) => {
-          throw new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED");
-        });
-        return callback(null, { data: contacts });
-        return callback(null, { data: heartRateReadings });
-      } catch (error) {
-        console.log("ERROR In getTrustedContactHeartRateReadings", error?.message || error);
-        logger.error("ERROR In getTrustedContactHeartRateReadings", { error: error });
-        process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
-        return callback(new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED"), null);
-      }
+        uniqueContactIds,
+      ).catch((_err) => {
+        throw new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED");
+      });
+      return callback(null, { data: contacts });
+      return callback(null, { data: heartRateReadings });
+    } catch (error) {
+      console.log("ERROR In getTrustedContactHeartRateReadings", error?.message || error);
+      logger.error("ERROR In getTrustedContactHeartRateReadings", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_TRUSTED_CONTACTS_HEART_RATE_READINGS_FAILED"), null);
+    }
+  }
+  static async webDashboardContactList({ userid, payload, headers }, callback) {
+    try {
+      const friends = await TrustedContacts.findAll({
+        where: {
+          status: "accepted",
+          [Op.or]: [
+            { user_id: userid },
+            { trusted_user_id: userid }
+          ]
+        },
+        include: [
+          {
+            model: User,
+            as: "trusted_contact",
+            where: { is_active: true },
+            include: [
+              {
+                model: Devices,
+                as: "devices",
+                where: { is_active: true },
+                required: false,
+                attributes: ["id", "device_token", "device_type"],
+              }
+            ],
+            attributes: ["id", "name", "phone_number", "profile_photo", "is_online", "latitude", "longitude"],
+            required: true,
+          },
+          {
+            model: User,
+            as: "inviter",
+            where: { is_active: true },
+            include: [
+              {
+                model: Devices,
+                as: "devices",
+                where: { is_active: true },
+                required: false,
+                attributes: ["id", "device_token", "device_type"],
+              }
+            ],
+            attributes: ["id", "name", "phone_number", "profile_photo", "is_online", "latitude", "longitude"],
+            required: true,
+          },
+        ],
+      });
+
+      const friendsData = friends.map((friend) => {
+        const friendData = friend.toJSON();
+        const trustedContactProfilePhoto = friendData.trusted_contact?.profile_photo;
+        friendData.trusted_contact.profile_photo = getProfileImage(trustedContactProfilePhoto);
+        const inviterProfilePhoto = friendData.inviter?.profile_photo;
+        friendData.inviter.profile_photo = getProfileImage(inviterProfilePhoto);
+        if (friendData.user_id === userid) {
+          return {
+            id: friendData.id,
+            contact_id: friendData.trusted_user_id,
+            nickname: friendData.nickname,
+            originalName: friendData.trusted_contact.name,
+            phone_number: friendData.trusted_contact.phone_number,
+            profile_photo: friendData.trusted_contact.profile_photo,
+            relationship: friendData.relationship,
+            sos_alert: friendData.sos_alert,
+          }
+        } else if (friendData.trusted_user_id === userid) {
+          return {
+            id: friendData.id,
+            contact_id: friendData.user_id,
+            nickname: friendData.nickname,
+            originalName: friendData.inviter.name,
+            phone_number: friendData.inviter.phone_number,
+            profile_photo: friendData.inviter.profile_photo,
+            relationship: friendData.relationship,
+            sos_alert: friendData.sos_alert,
+          }
+        }
+      });
+      const uniqueFriendsData = friendsData.filter((friend, index, self) => {
+        const firstIndex = self.findIndex((f) => f.contact_id === friend.contact_id);
+
+        // console.log("Current Friend:", friend);
+        // console.log("Current Index:", index);
+        // console.log("First Index Found:", firstIndex);
+        // console.log("Keep?", index === firstIndex);
+        // console.log("self", self)
+        // console.log("---------------------------");
+
+        return index === firstIndex;
+      });
+
+      return callback(null, { data: uniqueFriendsData });
+    } catch (error) {
+      logger.error("ERROR In chatContactFriendList", { error: error });
+      process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+      return callback(new Error("GET_CHAT_CONTACT_FRIEND_LIST_FAILED"), null);
+    }
+
+
   }
 
   static async getTrustedContactDevicesTokens({ userid, payload, headers }, callback) {

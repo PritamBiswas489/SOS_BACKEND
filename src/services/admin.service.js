@@ -1,6 +1,6 @@
 import "../config/environment.js";
 import db from "../databases/models/index.js";
-const { Op, User, Licenses, UserKycDocuments, SosSessions, SosSessionAudioRecords, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices, AbuserReports, Abusers, AbuserReportEvidenceFiles } = db;
+const { Op, User, Licenses, UserKycDocuments, SosSessions, SosSessionAudioRecords, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices, AbuserReports, Abusers, AbuserReportEvidenceFiles , SosSessionNotifications} = db;
 import { hashStr, compareHashedStr, generateToken } from "../libraries/auth.js";
 import { randomSaltHex, getProfileImage, audioFileLink } from "../libraries/utility.js";
 import * as Sentry from "@sentry/node";
@@ -567,6 +567,17 @@ export default class AdminService {
             attributes: ["id", "file_name", "created_at"],
             required: false,
           },
+           {
+            model: SosSessionNotifications,
+            as: "notifications",
+            include: [
+              {
+                model: User,
+                as: "to_user",
+                attributes: ["id", "name", "phone_number","profile_photo"],
+              },
+            ],
+          },
         ],
         order: [["created_at", "DESC"]],
         limit: parsedLimit,
@@ -587,6 +598,18 @@ export default class AdminService {
           ...audioRecord,
           file_url: audioFileLink(audioRecord.file_name),
         }));
+        plain.notifications = (plain.notifications || []).map((notificationPlain) => {
+          
+          const toUserPhoto = notificationPlain?.to_user?.profile_photo
+            ? `${process.env.IMAGE_BASE_URL}${notificationPlain.to_user.profile_photo}`
+            : null;
+
+          if (toUserPhoto) {
+            notificationPlain.to_user.profile_photo = getProfileImage(toUserPhoto);
+          }
+
+          return notificationPlain;
+        });
 
         return plain;
       });

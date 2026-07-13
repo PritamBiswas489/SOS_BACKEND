@@ -2,6 +2,7 @@ import "../config/environment.js";
 import * as Sentry from "@sentry/node";
 import logger from "../config/winston.js";
 import db from "../databases/models/index.js";
+ 
 
 const { EmergencyServices,  } = db;
 
@@ -166,6 +167,7 @@ static async getMyRequestedEmergencyServices({ userid }, callback) {
         requestBy: userid,
       },
       order: [["createdAt", "DESC"]],
+      limit: 100, // Limit to 100 results
     });
     return callback(null, {
       data: services,
@@ -179,5 +181,43 @@ static async getMyRequestedEmergencyServices({ userid }, callback) {
   }
 
 }
+
+static async deleteEmergencyServiceLocation(request, callback) {
+    try{
+        const { payload, userid } = request;
+        const serviceId = payload?.id;
+        console.log("Deleting emergency service location with ID:", serviceId, "for user ID:", userid);
+
+        if (!serviceId) {
+            return callback(new Error("SERVICE_ID_IS_REQUIRED"), null);
+        }
+
+        const service = await EmergencyServices.findOne({
+            where: {
+                id: serviceId,
+            },
+        });
+
+        if (!service) {
+            return callback(new Error("EMERGENCY_SERVICE_NOT_FOUND_OR_NOT_AUTHORIZED"), null);
+        }
+
+        await service.destroy();
+
+        return callback(null, {
+            data: null,
+            message: "EMERGENCY_SERVICE_LOCATION_DELETED_SUCCESSFULLY",
+        }); 
+
+    }catch(error){
+        console.error("Error in deleteEmergencyServiceLocation:", error);
+        logger.error("ERROR In deleteEmergencyServiceLocation", { error });
+        process.env.SENTRY_ENABLED === "true" && Sentry.captureException(error);
+        return callback(new Error("DELETE_EMERGENCY_SERVICE_LOCATION_FAILED"), null);
+    }
+        
+}
+
+ 
 
 }

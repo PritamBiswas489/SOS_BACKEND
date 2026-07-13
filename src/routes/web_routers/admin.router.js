@@ -619,14 +619,12 @@ router.post("/change-kyc-document-status", jwtVerifyWebAdmin, async (req, res) =
  *         schema:
  *           type: string
  *           format: date
- *           example: "2026-07-01"
  *         description: Filter SOS sessions created on or after this date
  *       - in: query
  *         name: toDate
  *         schema:
  *           type: string
  *           format: date
- *           example: "2026-07-31"
  *         description: Filter SOS sessions created on or before this date
  *     security:
  *       - bearerAuth: []
@@ -1506,6 +1504,44 @@ router.get("/abusers-with-report-stats", jwtVerifyWebAdmin, async (req, res) => 
  */
 router.post('/register-new-location', jwtVerifyWebAdmin, async (req, res) => {
   const response = await EmergencyServicesController.requestRegisterNewEmergencyService({
+    payload: { ...req.body },
+    headers: req.headers,
+    user: req.user,
+  });
+  res.return(response);
+});
+
+/**
+ * @swagger
+ * /api/auth-web/admin/delete-emergency-service-location:
+ *   post:
+ *     summary: Delete an emergency service location
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 description: Emergency service location ID
+ *                 example: 12
+ *     responses:
+ *       200:
+ *         description: Emergency service location deleted successfully
+ *       400:
+ *         description: Failed to delete emergency service location
+ */
+router.post('/delete-emergency-service-location', jwtVerifyWebAdmin, async (req, res) => {
+  const response = await EmergencyServicesController.deleteEmergencyServiceLocation({
     payload: { ...req.body },
     headers: req.headers,
     user: req.user,
