@@ -290,6 +290,31 @@ export default class AdminService {
       return callback(new Error("GET_NGO_AUTOCOMPLETE_FAILED"));
     }
   }
+
+  static async getUserAutocomplete(request, callback) {
+    try {
+      const { search } = request.payload;
+      const users = await User.findAll({
+        where: {
+          role: "USER",
+          [Op.or]: [
+            { name: { [db.Sequelize.Op.iLike]: `%${search}%` } },
+            { email: { [db.Sequelize.Op.iLike]: `%${search}%` } },
+            { phone_number: { [db.Sequelize.Op.iLike]: `%${search}%` } },
+          ],
+        },
+        attributes: ["id", "name", "email", "phone_number", "profile_photo", 'role'],
+        limit: 10,
+      });
+      return callback(null, { data: users });
+    } catch (error) {
+      console.error("Error in getUserAutocomplete:", error);
+      logger.error("ERROR In getUserAutocomplete", { error: error });
+      process.env.NODE_ENV === "production" && Sentry.captureException(error);
+      return callback(new Error("GET_USER_AUTOCOMPLETE_FAILED"));
+    }
+  }
+
   // Admin service method for listing users under an NGO with pagination and filtering
   static async listUsers(request, callback) {
     try {

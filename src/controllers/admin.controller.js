@@ -370,6 +370,49 @@ export default class AdminController {
     });
   }
 
+  static async getUserAutocomplete(request) {
+    const { payload, headers } = request;
+    const schema = Joi.object({
+      search: Joi.string().trim().required(),
+    });
+
+    const { error, value } = schema.validate(payload);
+    if (error) {
+      return {
+        status: 400,
+        data: null,
+        message: headers?.i18n.__(error.details[0].message || "INVALID_INPUT"),
+        error: { reason: error.details[0].message },
+      };
+    }
+
+    return new Promise((resolve) => {
+      AdminService.getUserAutocomplete(
+        { payload: value, headers },
+        (err, response) => {
+          if (err) {
+            return resolve({
+              status: 400,
+              data: null,
+              error: {
+                message: headers?.i18n.__(
+                  err.message || "GET_USER_AUTOCOMPLETE_FAILED",
+                ),
+                reason: err.message,
+              },
+            });
+          }
+          return resolve({
+            status: 200,
+            data: response.data,
+            message: headers?.i18n.__("GET_USER_AUTOCOMPLETE_SUCCESSFUL"),
+            error: null,
+          });
+        },
+      );
+    });
+  }
+
   static async listUsers(request) {
     const { payload, headers } = request;
     return new Promise((resolve) => {

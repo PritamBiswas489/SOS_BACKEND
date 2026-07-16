@@ -6,6 +6,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import EmergencyServicesController from "../../controllers/emergencyServices.controller.js";
+import NotificationCampaignController from "../../controllers/notificationCampaign.controller.js";
 const router = express.Router();
 
 /**
@@ -108,6 +109,41 @@ router.post("/login-admin-user",  async (req, res) => {
  */
 router.get("/ngo-autocomplete-by-name", jwtVerifyWebAdmin, async (req, res) => {
    const response = await AdminController.getNgoAutocompleteByName({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/user-autocomplete:
+ *   post:
+ *     summary: Autocomplete users by name, email, or mobile number
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - search
+ *             properties:
+ *               search:
+ *                 type: string
+ *                 description: Search text matched against user name, email, or mobile number
+ *                 example: john
+ *     responses:
+ *       200:
+ *         description: List of matching users
+ *       400:
+ *         description: Invalid search parameter
+ */
+router.post("/user-autocomplete", jwtVerifyWebAdmin, async (req, res) => {
+   const response = await AdminController.getUserAutocomplete({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers });
    res.return(response);
 });
 
@@ -1551,4 +1587,194 @@ router.post('/delete-emergency-service-location', jwtVerifyWebAdmin, async (req,
 
 
 
+
+/**
+ * @swagger
+ * /api/auth-web/admin/create-notification-campaign:
+ *   post:
+ *     summary: Create a notification campaign
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - targetType
+ *               - channel
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Campaign name/title
+ *                 example: Monsoon Safety Advisory
+ *               subject:
+ *                 type: string
+ *                 description: Email subject (required when channel is email or both)
+ *                 example: Stay Safe This Monsoon
+ *               bodyText:
+ *                 type: string
+ *                 description: Plain text email content
+ *                 example: "Safety tips: Please avoid flooded areas."
+ *               pushTitle:
+ *                 type: string
+ *                 description: Push notification title (required when channel is push or both)
+ *                 example: SOS Alert Update
+ *               pushBody:
+ *                 type: string
+ *                 description: Push notification body (required when channel is push or both)
+ *                 example: Please review the latest safety update in app.
+ *               targetType:
+ *                 type: string
+ *                 enum: [all, user_type, specific]
+ *                 description: Audience targeting mode
+ *               userTypes:
+ *                 type: array
+ *                 description: Required when targetType is user_type
+ *                 items:
+ *                   type: string
+ *                   enum: [ngo, user]
+ *               userIds:
+ *                 type: array
+ *                 description: Required when targetType is specific; all IDs must exist
+ *                 items:
+ *                   type: integer
+ *                   format: int64
+ *                 example: []
+ *               channel:
+ *                 type: string
+ *                 enum: [email, push, both]
+ *                 description: Delivery channel
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 description: Optional scheduled time; if omitted campaign is scheduled immediately
+ *               resolveBatchSize:
+ *                 type: integer
+ *                 description: Batch size used while resolving audience
+ *                 default: 1000
+ *     responses:
+ *       200:
+ *         description: Notification campaign created successfully
+ *       400:
+ *         description: Invalid payload or validation failed
+ */
+router.post('/create-notification-campaign', jwtVerifyWebAdmin, async (req, res) => {
+   const response = await NotificationCampaignController.createNotificationCampaign({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
+   res.return(response);
+});
+
+/**
+ * @swagger
+ * /api/auth-web/admin/campaign-list:
+ *   post:
+ *     summary: Get notification campaign list
+ *     tags:
+ *       - Admin authenticated routes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         required: false
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         required: false
+ *         description: Number of results per page
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     responses:
+ *       200:
+ *         description: Notification campaign list fetched successfully
+ *       400:
+ *         description: Invalid query parameters
+ */
+router.post('/campaign-list', jwtVerifyWebAdmin, async (req, res) => {
+   const response = await NotificationCampaignController.getNotificationCampaignList({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/cancel-notification-campaign:
+ *   post:
+ *     summary: Cancel a notification campaign
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 format: int64
+ *                 description: Notification campaign ID to cancel
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Notification campaign cancelled successfully
+ *       400:
+ *         description: Invalid payload or campaign not found
+ */
+router.post('/cancel-notification-campaign', jwtVerifyWebAdmin, async (req, res) => {
+   const response = await NotificationCampaignController.cancelNotificationCampaign({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
+   res.return(response);
+});
+
+
+/**
+ * @swagger
+ * /api/auth-web/admin/delete-notification-campaign:
+ *   post:
+ *     summary: Delete a notification campaign
+ *     tags:
+ *       - Admin authenticated routes
+ *     security:
+ *       - bearerAuth: []
+ *       - refreshToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *                 format: int64
+ *                 description: Notification campaign ID to delete
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Notification campaign deleted successfully
+ *       400:
+ *         description: Invalid payload or campaign not found
+ */
+router.post('/delete-notification-campaign', jwtVerifyWebAdmin, async (req, res) => {
+   const response = await NotificationCampaignController.deleteNotificationCampaign({ payload: { ...req.params, ...req.query, ...req.body }, headers: req.headers, user: req.user });
+   res.return(response);
+});
 export default router;

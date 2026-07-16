@@ -1,5 +1,5 @@
 const relation = (db) => {
-  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices } = db;
+  const { User, Licenses, UserSettings, Devices, UserKycDocuments, TrustedContacts, UserChats, SosSessions, SosSessionNotifications, SosSessionAudioRecords, HeartRateRecords, Abusers, AbuserReports, AbuserReportEvidenceFiles, AppFeedback, AppFeedbackAttachments, RequestIosEmail, ContactAdmin, EmergencyServices, NotificationCampaign, NotificationCampaignTargetUser, NotificationCampaignUserType } = db;
 
   // Define the one-to-one relationship between User and Licenses
   User.hasOne(Licenses, {
@@ -244,6 +244,38 @@ const relation = (db) => {
   EmergencyServices.belongsTo(User, {
     foreignKey: "requestBy",
     as: "user",
+  });
+
+  NotificationCampaign.hasMany(NotificationCampaignTargetUser, {
+    foreignKey: "campaign_id",
+    as: "target_users",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  NotificationCampaignTargetUser.belongsTo(NotificationCampaign, {
+    foreignKey: "campaign_id",
+    as: "campaign",
+  });
+  NotificationCampaignTargetUser.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
+  User.hasMany(NotificationCampaignTargetUser, {
+    foreignKey: "user_id",
+    as: "notification_campaign_targets",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+
+  NotificationCampaign.hasMany(NotificationCampaignUserType, {
+    foreignKey: "campaign_id",
+    as: "user_types",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+  NotificationCampaignUserType.belongsTo(NotificationCampaign, {
+    foreignKey: "campaign_id",
+    as: "campaign",
   });
 
 };
